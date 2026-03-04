@@ -46,3 +46,24 @@ app.*.map.json
 
 # Core Operational Memory
 .antigravity/
+
+# ── CRITICAL: Large data files — NEVER commit these ──────────────────────────
+# OSM / Map data (files are 90MB–350MB each — always use external storage)
+*.pbf
+*.osm.pbf
+*.osm
+backend/osrm-data/
+
+# Python virtual env
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Node / Frontend dependencies
+node_modules/
+dist/
+
+# Environment secrets
+*.env
+.env.local
