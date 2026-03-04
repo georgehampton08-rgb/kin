@@ -2,12 +2,12 @@
 Zones API Endpoint
 ==================
 GET /api/v1/zones/
-Returns all zones as a GeoJSON FeatureCollection.
-Uses PostGIS ST_X / ST_Y to extract lon/lat from the geography point.
+Returns all zones for the authenticated user's family.
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from app.db.session import AsyncSessionLocal
+from app.api.deps import get_current_user
 
 router = APIRouter()
 
@@ -17,23 +17,23 @@ ZONE_COLORS = {
     "restricted": "#ff3333",
 }
 
+
 @router.get("/")
-async def list_zones():
-    """Returns all zones including center coordinates, radius, and zone_type."""
+async def list_zones(user: dict = Depends(get_current_user)):
+    """Returns all zones for the authenticated user's family."""
+    family_id = user.get("family_id")
+
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             text("""
-                SELECT
-                    id,
-                    name,
-                    zone_type,
-                    radius_meters,
-                    ST_X(center::geometry) AS lon,
-                    ST_Y(center::geometry) AS lat,
-                    created_at
+                SELECT id, name, zone_type, radius_meters,
+                       ST_X(center::geometry) AS lon,
+                       ST_Y(center::geometry) AS lat, created_at
                 FROM zones
+                WHERE family_id = :family_id::uuid OR family_id IS NULL
                 ORDER BY id
-            """)
+            """),
+            {"family_id": str(family_id)},
         )
         rows = result.fetchall()
 
@@ -42,20 +42,14 @@ async def list_zones():
         color = ZONE_COLORS.get(row.zone_type or "safe", "#00cc66")
         features.append({
             "type": "Feature",
-            "geometry": {
-                "type": "Point",
-                "coordinates": [row.lon, row.lat]
-            },
+            "geometry": {"type": "Point", "coordinates": [row.lon, row.lat]},
             "properties": {
                 "id": row.id,
                 "name": row.name,
                 "zone_type": row.zone_type or "safe",
                 "radius_meters": float(row.radius_meters),
                 "color": color,
-            }
+            },
         })
 
-    return {
-        "type": "FeatureCollection",
-        "features": features,
-    }
+    return {"type": "FeatureCollection", "features": features}

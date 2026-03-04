@@ -1,1 +1,15 @@
-from app.models.location import Base, CurrentStatus, LocationHistory
+from app.models.location import (
+    Base,
+    CurrentStatus,
+    LocationHistory,
+    Zone,
+    GeofenceEvent,
+    MatchedRoute,
+    User,
+    Family,
+    FamilyMembership,
+    Device,
+    PairingToken,
+    RefreshToken,
+    LocationRaw,
+)

@@ -1,9 +1,9 @@
-from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import asyncio
 from app.api.v1.api import api_router
-from app.core.security import APIKeyMiddleware
+from app.core.security import JWTAuthMiddleware
 from app.core.mqtt import MQTTListener
 from app.core.ws_manager import ws_manager
 
@@ -28,8 +28,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# API Key auth middleware (applied after CORS so preflight passes)
-app.add_middleware(APIKeyMiddleware)
+# JWT auth middleware (applied after CORS so preflight passes)
+app.add_middleware(JWTAuthMiddleware)
 
 # Include v1 routers
 app.include_router(api_router, prefix="/api/v1")
@@ -39,8 +39,6 @@ async def websocket_endpoint(websocket: WebSocket, device_id: str):
     await ws_manager.connect(device_id, websocket)
     try:
         while True:
-            # We only expect the dashboard to receive data, not send,
-            # but we await receive to block and detect disconnects natively.
             await websocket.receive_text()
     except WebSocketDisconnect:
         ws_manager.disconnect(device_id, websocket)

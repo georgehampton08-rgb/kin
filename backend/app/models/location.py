@@ -1,9 +1,127 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
-from sqlalchemy.orm import declarative_base
+"""
+SQLAlchemy Models
+==================
+All database models for the Kin backend.
+Includes location/geofencing models and the security/auth models.
+"""
+import uuid
+from sqlalchemy import (
+    Column, Integer, String, Float, DateTime, ForeignKey,
+    Boolean, LargeBinary, Text, UniqueConstraint,
+)
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import declarative_base, relationship
 from geoalchemy2 import Geography
 from datetime import datetime, timezone
 
 Base = declarative_base()
+
+
+def _utcnow():
+    return datetime.now(timezone.utc)
+
+
+def _genuuid():
+    return uuid.uuid4()
+
+
+# ──────────────────────────────────────────────────────────────
+# Security / Auth Models
+# ──────────────────────────────────────────────────────────────
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=_genuuid)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    role = Column(String(20), nullable=False)  # 'parent' or 'child'
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+
+    memberships = relationship("FamilyMembership", back_populates="user")
+    devices = relationship("Device", back_populates="user")
+
+
+class Family(Base):
+    __tablename__ = "families"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=_genuuid)
+    name = Column(String(100), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+
+    memberships = relationship("FamilyMembership", back_populates="family")
+    devices = relationship("Device", back_populates="family")
+
+
+class FamilyMembership(Base):
+    __tablename__ = "family_memberships"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=_genuuid)
+    family_id = Column(UUID(as_uuid=True), ForeignKey("families.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    role = Column(String(20), nullable=False)  # 'parent' or 'child'
+
+    __table_args__ = (
+        UniqueConstraint("family_id", "user_id", name="uq_family_user"),
+    )
+
+    family = relationship("Family", back_populates="memberships")
+    user = relationship("User", back_populates="memberships")
+
+
+class Device(Base):
+    __tablename__ = "devices"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=_genuuid)
+    device_identifier = Column(String(255), unique=True, nullable=False, index=True)
+    family_id = Column(UUID(as_uuid=True), ForeignKey("families.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    mqtt_username = Column(String(255), nullable=True)
+    mqtt_password_hash = Column(String(255), nullable=True)
+    paired_at = Column(DateTime(timezone=True), default=_utcnow)
+    is_active = Column(Boolean, default=True)
+
+    family = relationship("Family", back_populates="devices")
+    user = relationship("User", back_populates="devices")
+
+
+class PairingToken(Base):
+    __tablename__ = "pairing_tokens"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=_genuuid)
+    token = Column(String(64), unique=True, nullable=False, index=True)
+    family_id = Column(UUID(as_uuid=True), ForeignKey("families.id"), nullable=False)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    device_id = Column(UUID(as_uuid=True), ForeignKey("devices.id"), nullable=True)
+
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=_genuuid)
+    jti = Column(String(64), unique=True, nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    device_id = Column(UUID(as_uuid=True), ForeignKey("devices.id"), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+
+
+# ──────────────────────────────────────────────────────────────
+# Encrypted Location Storage
+# ──────────────────────────────────────────────────────────────
+
+class LocationRaw(Base):
+    """Permanent audit trail with pgcrypto-encrypted coordinates."""
+    __tablename__ = "locations_raw"
+    id = Column(Integer, primary_key=True)
+    device_id = Column(String, nullable=False, index=True)
+    lat_encrypted = Column(LargeBinary, nullable=False)
+    lng_encrypted = Column(LargeBinary, nullable=False)
+    altitude = Column(Float, nullable=True)
+    speed = Column(Float, nullable=True)
+    battery_level = Column(Float, nullable=True)
+    timestamp = Column(DateTime(timezone=True), default=_utcnow)
+
+
+# ──────────────────────────────────────────────────────────────
+# Location / Geofencing Models (existing, retained)
+# ──────────────────────────────────────────────────────────────
 
 class CurrentStatus(Base):
     __tablename__ = 'current_status'
@@ -13,7 +131,8 @@ class CurrentStatus(Base):
     altitude = Column(Float)
     speed = Column(Float)
     battery_level = Column(Float)
-    last_updated = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    last_updated = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+
 
 class LocationHistory(Base):
     __tablename__ = 'location_history'
@@ -23,7 +142,8 @@ class LocationHistory(Base):
     altitude = Column(Float)
     speed = Column(Float)
     battery_level = Column(Float)
-    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    timestamp = Column(DateTime(timezone=True), default=_utcnow)
+
 
 class Zone(Base):
     __tablename__ = 'zones'
@@ -31,8 +151,10 @@ class Zone(Base):
     name = Column(String, nullable=False)
     center = Column(Geography(geometry_type='POINT', srid=4326), nullable=False)
     radius_meters = Column(Float, nullable=False)
-    zone_type = Column(String, default='safe')  # 'safe', 'caution', 'restricted'
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    zone_type = Column(String, default='safe')
+    family_id = Column(UUID(as_uuid=True), ForeignKey("families.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+
 
 class GeofenceEvent(Base):
     __tablename__ = 'geofence_events'
@@ -40,8 +162,9 @@ class GeofenceEvent(Base):
     device_id = Column(String, index=True, nullable=False)
     zone_id = Column(Integer, ForeignKey('zones.id'), nullable=False)
     zone_name = Column(String, nullable=False)
-    event_type = Column(String, nullable=False)  # 'ENTRY' or 'EXIT'
-    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    event_type = Column(String, nullable=False)
+    timestamp = Column(DateTime(timezone=True), default=_utcnow)
+
 
 class MatchedRoute(Base):
     __tablename__ = 'matched_routes'
@@ -50,8 +173,7 @@ class MatchedRoute(Base):
     trip_start = Column(DateTime(timezone=True), nullable=True)
     trip_end = Column(DateTime(timezone=True), nullable=True)
     raw_point_count = Column(Integer, nullable=False)
-    # Road-snapped LineString from OSRM / Google Roads
     matched_path = Column(Geography(geometry_type='LINESTRING', srid=4326), nullable=False)
-    confidence = Column(Float, nullable=True)   # OSRM 0–1; Google provides quality score
-    provider = Column(String, default='osrm')   # 'osrm' or 'google'
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    confidence = Column(Float, nullable=True)
+    provider = Column(String, default='osrm')
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
