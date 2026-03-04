@@ -31,6 +31,7 @@ class Zone(Base):
     name = Column(String, nullable=False)
     center = Column(Geography(geometry_type='POINT', srid=4326), nullable=False)
     radius_meters = Column(Float, nullable=False)
+    zone_type = Column(String, default='safe')  # 'safe', 'caution', 'restricted'
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 class GeofenceEvent(Base):

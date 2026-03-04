@@ -6,7 +6,18 @@ import * as turf from '@turf/turf';
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 const TRAIL_LENGTH = 10;
 
-export default function KinMap({ targetLocation, historyFeatures = [], isHistory = false }) {
+// Opacity levels for zone pulse animation (active vs inactive)
+const ZONE_OPACITY_INACTIVE = 0.15;
+const ZONE_OPACITY_ACTIVE = 0.45;
+
+export default function KinMap({
+    targetLocation,
+    historyFeatures = [],
+    isHistory = false,
+    zonePolygons = [],
+    activeZoneIds = new Set(),
+    onMapReady,
+}) {
     const mapContainer = useRef(null);
     const mapRef = useRef(null);
     const markerRef = useRef(null);
@@ -14,8 +25,9 @@ export default function KinMap({ targetLocation, historyFeatures = [], isHistory
     const animationRef = useRef(null);
     const currentPosRef = useRef(null);
     const mapReadyRef = useRef(false);
+    const tiltRef = useRef(false);
 
-    // ── Initialize Map once ────────────────────────────────────────────────
+    // ── Initialize Map once ───────────────────────────────────────────────
     useEffect(() => {
         if (mapRef.current) return;
 
@@ -31,7 +43,34 @@ export default function KinMap({ targetLocation, historyFeatures = [], isHistory
         mapRef.current = map;
 
         map.on('load', () => {
-            // ── Breadcrumb trail (live mode) ────
+            // ── Zone circles source ──────────────────────────────────────────
+            map.addSource('zones-source', {
+                type: 'geojson',
+                data: { type: 'FeatureCollection', features: [] }
+            });
+            // Semi-transparent fill
+            map.addLayer({
+                id: 'zones-fill',
+                type: 'fill',
+                source: 'zones-source',
+                paint: {
+                    'fill-color': ['get', 'color'],
+                    'fill-opacity': ZONE_OPACITY_INACTIVE,
+                }
+            });
+            // Zone border ring
+            map.addLayer({
+                id: 'zones-border',
+                type: 'line',
+                source: 'zones-source',
+                paint: {
+                    'line-color': ['get', 'color'],
+                    'line-width': 1.5,
+                    'line-opacity': 0.7,
+                }
+            });
+
+            // ── Breadcrumb trail (live mode) ─────────────────────────────────
             map.addSource('trail-source', {
                 type: 'geojson',
                 data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } }
@@ -49,52 +88,38 @@ export default function KinMap({ targetLocation, historyFeatures = [], isHistory
                 }
             });
 
-            // ── Full-day history route (history mode) ──────────
+            // ── Full-day history route ───────────────────────────────────────
             map.addSource('history-route-source', {
                 type: 'geojson',
                 data: { type: 'FeatureCollection', features: [] }
             });
-            // Glow background layer
             map.addLayer({
                 id: 'history-route-glow',
                 type: 'line',
                 source: 'history-route-source',
                 layout: { 'line-join': 'round', 'line-cap': 'round' },
-                paint: {
-                    'line-color': '#4488ff',
-                    'line-width': 10,
-                    'line-opacity': 0.25,
-                    'line-blur': 6,
-                }
+                paint: { 'line-color': '#4488ff', 'line-width': 10, 'line-opacity': 0.2, 'line-blur': 6 }
             });
-            // Main solid route line
             map.addLayer({
                 id: 'history-route-layer',
                 type: 'line',
                 source: 'history-route-source',
                 layout: { 'line-join': 'round', 'line-cap': 'round' },
-                paint: {
-                    'line-color': '#5599ff',
-                    'line-width': 3,
-                    'line-opacity': 0.9,
-                }
+                paint: { 'line-color': '#5599ff', 'line-width': 3, 'line-opacity': 0.9 }
             });
 
-            // ── Custom Child Marker ─────────────────────────────
+            // ── Child Marker ─────────────────────────────────────────────────
             const el = document.createElement('div');
             el.className = 'child-marker';
-            const dot = document.createElement('div');
-            dot.className = 'marker-dot';
-            el.appendChild(dot);
-            const pulse = document.createElement('div');
-            pulse.className = 'marker-pulse';
-            el.appendChild(pulse);
+            const dot = document.createElement('div'); dot.className = 'marker-dot'; el.appendChild(dot);
+            const pulse = document.createElement('div'); pulse.className = 'marker-pulse'; el.appendChild(pulse);
 
             markerRef.current = new maplibregl.Marker({ element: el })
                 .setLngLat([-87.6230, 41.8827])
                 .addTo(map);
 
             mapReadyRef.current = true;
+            if (onMapReady) onMapReady(map);
         });
 
         return () => {
@@ -105,48 +130,65 @@ export default function KinMap({ targetLocation, historyFeatures = [], isHistory
         };
     }, []);
 
-    // ── Update history route layer when features change ────────────────────
+    // ── Update zone polygons ─────────────────────────────────────────────
     useEffect(() => {
         if (!mapReadyRef.current || !mapRef.current) return;
-        const source = mapRef.current.getSource('history-route-source');
-        if (!source) return;
+        const src = mapRef.current.getSource('zones-source');
+        if (!src) return;
+        src.setData({ type: 'FeatureCollection', features: zonePolygons });
+    }, [zonePolygons]);
 
-        source.setData({ type: 'FeatureCollection', features: historyFeatures });
+    // ── Pulse active zones ───────────────────────────────────────────────
+    useEffect(() => {
+        if (!mapReadyRef.current || !mapRef.current) return;
+        const map = mapRef.current;
+        if (!map.getLayer('zones-fill')) return;
+        // Use a data-driven expression that ups opacity for active zone ids
+        // We encode this as extra properties in the feature
+        const updatedFeatures = zonePolygons.map(f => ({
+            ...f,
+            properties: {
+                ...f.properties,
+                _active: activeZoneIds.has(f.properties.id) ? 1 : 0,
+            }
+        }));
+        const src = map.getSource('zones-source');
+        if (src) src.setData({ type: 'FeatureCollection', features: updatedFeatures });
+        map.setPaintProperty('zones-fill', 'fill-opacity', [
+            'case', ['==', ['get', '_active'], 1], ZONE_OPACITY_ACTIVE, ZONE_OPACITY_INACTIVE
+        ]);
+    }, [activeZoneIds, zonePolygons]);
 
-        // Fly to the extent of the history route
+    // ── History route layer ──────────────────────────────────────────────
+    useEffect(() => {
+        if (!mapReadyRef.current || !mapRef.current) return;
+        const src = mapRef.current.getSource('history-route-source');
+        if (!src) return;
+        src.setData({ type: 'FeatureCollection', features: historyFeatures });
+
         if (historyFeatures.length > 0) {
             const allCoords = historyFeatures.flatMap(f => f.geometry?.coordinates || []);
-            if (allCoords.length > 0) {
-                const [minLon, minLat] = allCoords.reduce(
-                    ([minX, minY], [x, y]) => [Math.min(minX, x), Math.min(minY, y)],
-                    [Infinity, Infinity]
-                );
-                const [maxLon, maxLat] = allCoords.reduce(
-                    ([maxX, maxY], [x, y]) => [Math.max(maxX, x), Math.max(maxY, y)],
-                    [-Infinity, -Infinity]
-                );
+            if (allCoords.length > 1) {
+                const lons = allCoords.map(c => c[0]), lats = allCoords.map(c => c[1]);
                 mapRef.current.fitBounds(
-                    [[minLon, minLat], [maxLon, maxLat]],
+                    [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
                     { padding: 80, duration: 800 }
                 );
             }
         }
     }, [historyFeatures]);
 
-    // ── Handle incoming location (live animation OR history scrub snap) ────
+    // ── Location updates (live animation OR history snap) ────────────────
     useEffect(() => {
         if (!targetLocation || !mapReadyRef.current || !markerRef.current) return;
-
         const newTarget = [targetLocation.lon, targetLocation.lat];
 
-        // History scrub: snap instantly, no animation
         if (isHistory) {
             markerRef.current.setLngLat(newTarget);
             currentPosRef.current = newTarget;
             return;
         }
 
-        // ── Live mode: first point, teleport ─────────────────────────────────
         if (!currentPosRef.current) {
             currentPosRef.current = newTarget;
             markerRef.current.setLngLat(newTarget);
@@ -155,51 +197,50 @@ export default function KinMap({ targetLocation, historyFeatures = [], isHistory
             return;
         }
 
-        // ── Live mode: breadcrumb trail update ────────────────────────────────
         trailRef.current.push(newTarget);
         if (trailRef.current.length > TRAIL_LENGTH) trailRef.current.shift();
-        const trailSource = mapRef.current.getSource('trail-source');
-        if (trailSource) {
-            trailSource.setData({
-                type: 'Feature',
-                geometry: { type: 'LineString', coordinates: trailRef.current }
-            });
-        }
+        const trailSrc = mapRef.current.getSource('trail-source');
+        if (trailSrc) trailSrc.setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: trailRef.current } });
 
-        // ── Live mode: smooth Turf.js animation ──────────────────────────────
-        const startPoint = turf.point(currentPosRef.current);
-        const endPoint = turf.point(newTarget);
-        const distance = turf.distance(startPoint, endPoint);
-        const bearing = turf.bearing(startPoint, endPoint);
-
-        if (distance < 0.001) {
-            currentPosRef.current = newTarget;
-            markerRef.current.setLngLat(newTarget);
-            return;
-        }
+        const startP = turf.point(currentPosRef.current);
+        const endP = turf.point(newTarget);
+        const dist = turf.distance(startP, endP);
+        const bearing = turf.bearing(startP, endP);
+        if (dist < 0.001) { currentPosRef.current = newTarget; markerRef.current.setLngLat(newTarget); return; }
 
         const duration = 800;
         const startTime = performance.now();
-
-        function animateMarker(time) {
+        function animate(time) {
             const progress = Math.min((time - startTime) / duration, 1);
-            const currentDistance = distance * progress;
-            const intermediatePoint = turf.destination(startPoint, currentDistance, bearing);
-            const newPos = intermediatePoint.geometry.coordinates;
-            markerRef.current.setLngLat(newPos);
-            currentPosRef.current = newPos;
-            mapRef.current.panTo(newPos, { duration: 0 });
-            if (progress < 1) animationRef.current = requestAnimationFrame(animateMarker);
+            const pos = turf.destination(startP, dist * progress, bearing).geometry.coordinates;
+            markerRef.current.setLngLat(pos);
+            currentPosRef.current = pos;
+            mapRef.current.panTo(pos, { duration: 0 });
+            if (progress < 1) animationRef.current = requestAnimationFrame(animate);
         }
-
         cancelAnimationFrame(animationRef.current);
-        animationRef.current = requestAnimationFrame(animateMarker);
+        animationRef.current = requestAnimationFrame(animate);
     }, [targetLocation, isHistory]);
 
+    // ── Expose tilt control via ref ──────────────────────────────────────
+    function handleTilt() {
+        if (!mapRef.current) return;
+        tiltRef.current = !tiltRef.current;
+        mapRef.current.easeTo({ pitch: tiltRef.current ? 55 : 0, duration: 400 });
+    }
+
     return (
-        <div
-            ref={mapContainer}
-            style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}
-        />
+        <div style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}>
+            <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
+
+            {/* Map Control Bar */}
+            <div className="map-controls">
+                <button className="map-control-btn" title="Zoom In" onClick={() => mapRef.current?.zoomIn()}>＋</button>
+                <button className="map-control-btn" title="Zoom Out" onClick={() => mapRef.current?.zoomOut()}>－</button>
+                <div className="map-control-divider" />
+                <button className="map-control-btn" title="Reset North" onClick={() => mapRef.current?.resetNorth({ duration: 400 })}>⊕</button>
+                <button className="map-control-btn" title="Toggle 3D Tilt" onClick={handleTilt}>◈</button>
+            </div>
+        </div>
     );
 }

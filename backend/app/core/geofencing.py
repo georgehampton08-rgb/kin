@@ -11,6 +11,7 @@ import logging
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.location import Zone, GeofenceEvent
+from app.core.ws_manager import ws_manager
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,13 @@ async def check_geofences(session: AsyncSession, device_id: str, lon: float, lat
             event_type="ENTRY"
         )
         session.add(event)
-        # Mock push notification log
+        # Broadcast WebSocket alert to parent dashboards
+        await ws_manager.broadcast(device_id, {
+            "type": "geofence_alert",
+            "event": "ENTRY",
+            "zone_name": zone_name,
+            "device_id": device_id,
+        })
         logger.warning(
             f"[NOTIFICATION] 🟢 ENTRY — Device '{device_id}' entered zone '{zone_name}'"
         )
@@ -84,6 +91,13 @@ async def check_geofences(session: AsyncSession, device_id: str, lon: float, lat
             event_type="EXIT"
         )
         session.add(event)
+        # Broadcast WebSocket alert to parent dashboards
+        await ws_manager.broadcast(device_id, {
+            "type": "geofence_alert",
+            "event": "EXIT",
+            "zone_name": zone_name,
+            "device_id": device_id,
+        })
         logger.warning(
             f"[NOTIFICATION] 🔴 EXIT  — Device '{device_id}' left zone '{zone_name}'"
         )

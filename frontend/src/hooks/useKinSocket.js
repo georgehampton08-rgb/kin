@@ -1,27 +1,37 @@
 import { useState, useEffect, useRef } from 'react';
 
-export function useKinSocket(deviceId) {
+/**
+ * useKinSocket
+ * Native WebSocket hook with auto-reconnect.
+ * Handles both 'telemetry' and 'geofence_alert' message types.
+ * @param {string} deviceId   - Target device to subscribe to
+ * @param {function} onAlert  - Callback fired with geofence alert data
+ */
+export function useKinSocket(deviceId, onAlert) {
     const [lastLocation, setLastLocation] = useState(null);
-    const [status, setStatus] = useState('connecting'); // connecting, connected, disconnected
+    const [status, setStatus] = useState('connecting');
     const wsRef = useRef(null);
-    const reconnectTimeoutRef = useRef(null);
+    const reconnectRef = useRef(null);
+    const onAlertRef = useRef(onAlert);
+
+    // Keep ref fresh on each render without restarting the socket
+    useEffect(() => { onAlertRef.current = onAlert; }, [onAlert]);
 
     useEffect(() => {
         if (!deviceId) return;
 
         function connect() {
-            // Connect to the local FastAPI server
-            const wsUrl = `ws://localhost:8000/ws/live/${deviceId}`;
-            const ws = new WebSocket(wsUrl);
+            const ws = new WebSocket(`ws://localhost:8000/ws/live/${deviceId}`);
 
             ws.onopen = () => {
                 setStatus('connected');
-                console.log(`[WS] Connected to dashboard stream for ${deviceId}`);
+                console.log(`[WS] Connected for ${deviceId}`);
             };
 
             ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
+
                     if (data.type === 'telemetry') {
                         setLastLocation({
                             lat: data.lat,
@@ -30,34 +40,29 @@ export function useKinSocket(deviceId) {
                             battery: data.battery_level,
                             timestamp: Date.now()
                         });
+                    } else if (data.type === 'geofence_alert') {
+                        // Fire the alert callback (non-blocking)
+                        if (onAlertRef.current) onAlertRef.current(data);
                     }
                 } catch (e) {
-                    console.error('[WS] Error parsing message', e);
+                    console.error('[WS] Parse error', e);
                 }
             };
 
             ws.onclose = () => {
                 setStatus('disconnected');
-                console.warn(`[WS] Disconnected. Reconnecting in 3s...`);
-                clearTimeout(reconnectTimeoutRef.current);
-                reconnectTimeoutRef.current = setTimeout(connect, 3000);
+                clearTimeout(reconnectRef.current);
+                reconnectRef.current = setTimeout(connect, 3000);
             };
 
-            ws.onerror = (err) => {
-                console.error('[WS] Error', err);
-                ws.close();
-            };
-
+            ws.onerror = () => ws.close();
             wsRef.current = ws;
         }
 
         connect();
-
         return () => {
-            clearTimeout(reconnectTimeoutRef.current);
-            if (wsRef.current) {
-                wsRef.current.close();
-            }
+            clearTimeout(reconnectRef.current);
+            wsRef.current?.close();
         };
     }, [deviceId]);
 
