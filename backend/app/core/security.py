@@ -17,7 +17,7 @@ from app.core.auth import JWT_SECRET_KEY, JWT_ALGORITHM, current_family_id, curr
 logger = logging.getLogger(__name__)
 
 # Paths that don't require authentication
-PUBLIC_PATHS = {"/", "/docs", "/redoc", "/openapi.json"}
+PUBLIC_PATHS = {"/", "/docs", "/redoc", "/openapi.json", "/health"}
 PUBLIC_PREFIXES = ("/api/v1/auth/", "/auth/")
 
 

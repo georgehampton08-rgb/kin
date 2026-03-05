@@ -63,6 +63,7 @@ steps:
         chmod +x /workspace/cloud-sql-proxy
 
         # Start proxy in background (Unix socket mode)
+        mkdir -p /workspace/cloudsql
         /workspace/cloud-sql-proxy \
           --unix-socket=/workspace/cloudsql \
           kin-tracker:us-central1:kin-db &
