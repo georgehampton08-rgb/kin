@@ -10,17 +10,11 @@ export default function AddDeviceModal({ onClose }) {
         setLoading(true);
         setError(null);
         try {
-            // Need to pass JWT token if we have a login flow, but currently dashboard uses no login
-            // Wait, the backend requires authentication for `/pairing-tokens`.
-            // Let's assume the user is logged in and has a token in localStorage, or skip if not implemented.
-            const jwt = localStorage.getItem('access_token');
-
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-            const res = await fetch(`${apiUrl}/api/v1/auth/pairing-tokens`, {
+            const res = await fetch(`${apiUrl}/api/v1/auth/create-pairing-token`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
                 }
             });
 
