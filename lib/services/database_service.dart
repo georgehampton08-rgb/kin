@@ -64,6 +64,15 @@ class DatabaseService {
     debugPrint('[Database] Inserted location (speed=${locationData['speed']})');
   }
 
+  Future<List<Map<String, dynamic>>> getLastLocations(int count) async {
+    final db = await database;
+    return await db.query(
+      'locations',
+      orderBy: 'timestamp DESC',
+      limit: count,
+    );
+  }
+
   Future<int> getUnsyncedCount() async {
     final db = await database;
     final result = await db.rawQuery('SELECT COUNT(*) FROM locations WHERE synced = 0');

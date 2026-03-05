@@ -48,14 +48,14 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         throw Exception("Invalid QR code format.");
       }
 
-      final deviceId = await _getDeviceIdentifier();
+      final hardwareId = await _getDeviceIdentifier();
       final dio = Dio();
 
       final response = await dio.post(
         '$apiUrl/api/v1/auth/pair-device',
         data: {
           'pairing_token': pairingToken,
-          'device_identifier': deviceId,
+          'device_identifier': hardwareId,
         },
       );
 
