@@ -28,7 +28,7 @@ steps:
     args:
       - "build"
       - "-t"
-      - "us-central1-docker.pkg.dev/$PROJECT_ID/kin/kin-api:$SHORT_SHA"
+      - "us-central1-docker.pkg.dev/$PROJECT_ID/kin/kin-api:${_GIT_SHA}"
       - "-t"
       - "us-central1-docker.pkg.dev/$PROJECT_ID/kin/kin-api:latest"
       - "backend/"
@@ -38,7 +38,7 @@ steps:
     id: "push-sha"
     args:
       - "push"
-      - "us-central1-docker.pkg.dev/$PROJECT_ID/kin/kin-api:$SHORT_SHA"
+      - "us-central1-docker.pkg.dev/$PROJECT_ID/kin/kin-api:${_GIT_SHA}"
     waitFor: ["build-and-push"]
 
   - name: "gcr.io/cloud-builders/docker"
@@ -76,11 +76,16 @@ steps:
 
         # Install deps and run migrations
         pip install --quiet asyncpg alembic sqlalchemy geoalchemy2 aiosqlite
-        cd backend
-        DATABASE_URL="postgresql+asyncpg://kinuser:$(gcloud secrets versions access latest --secret=kin-db-url | python3 -c 'import sys; url=sys.stdin.read().strip(); print(url.split(\"kinuser:\")[1].split(\"@\")[0])')@/kindb?host=/workspace/cloudsql/kin-tracker:us-central1:kin-db" \
-          alembic upgrade head
 
-        kill $PROXY_PID
+        # Read the full Cloud SQL URL from Secret Manager and swap the host to the proxy socket
+        DB_URL=$(gcloud secrets versions access latest --secret=kin-db-url)
+        # Replace the host param to point to the local proxy socket
+        PROXY_URL=$(echo "$DB_URL" | sed 's|host=.*|host=/workspace/cloudsql/kin-tracker:us-central1:kin-db|')
+
+        cd backend
+        DATABASE_URL="$PROXY_URL" alembic upgrade head
+
+        kill $PROXY_PID || true
     waitFor: ["push-sha", "push-latest"]
 
   # ────────────────────────────────────────────────────────────────────────────
@@ -92,7 +97,7 @@ steps:
       - "run"
       - "deploy"
       - "kin-api"
-      - "--image=us-central1-docker.pkg.dev/$PROJECT_ID/kin/kin-api:$SHORT_SHA"
+      - "--image=us-central1-docker.pkg.dev/$PROJECT_ID/kin/kin-api:${_GIT_SHA}"
       - "--region=us-central1"
       - "--platform=managed"
       - "--no-traffic"
@@ -105,7 +110,7 @@ steps:
       - "--allow-unauthenticated"
       - "--add-cloudsql-instances=kin-tracker:us-central1:kin-db"
       - "--set-secrets=DATABASE_URL=kin-db-url:latest,MQTT_PASSWORD=kin-mqtt-password:latest,JWT_SECRET=kin-jwt-secret:latest,ENCRYPTION_KEY=kin-encryption-key:latest"
-      - "--set-env-vars=MQTT_BROKER=kin-broker,MQTT_PORT=1883,ENVIRONMENT=production,APP_VERSION=$SHORT_SHA"
+      - "--set-env-vars=MQTT_BROKER=kin-broker,MQTT_PORT=1883,ENVIRONMENT=production,APP_VERSION=${_GIT_SHA}"
     waitFor: ["migrate"]
 
   # ────────────────────────────────────────────────────────────────────────────
@@ -154,11 +159,15 @@ steps:
     waitFor: ["health-check"]
 
 images:
-  - "us-central1-docker.pkg.dev/$PROJECT_ID/kin/kin-api:$SHORT_SHA"
+  - "us-central1-docker.pkg.dev/$PROJECT_ID/kin/kin-api:${_GIT_SHA}"
   - "us-central1-docker.pkg.dev/$PROJECT_ID/kin/kin-api:latest"
+
+substitutions:
+  _GIT_SHA: "local"  # overridden by --substitutions=_GIT_SHA=<sha> or GitHub trigger
 
 options:
   logging: CLOUD_LOGGING_ONLY
   machineType: "E2_HIGHCPU_8"
+  substitution_option: ALLOW_LOOSE
 
 timeout: "1200s"
