@@ -39,6 +39,27 @@ export default function App() {
     const [isAddCardOpen, setIsAddCardOpen] = useState(false);
     const [knownDevices, setKnownDevices] = useState([]);
 
+    // Fetch paired devices on mount
+    useEffect(() => {
+        const fetchDevices = async () => {
+            try {
+                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+                const res = await fetch(`${apiUrl}/api/v1/devices/`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setKnownDevices(data.devices.map(d => ({
+                        device_id: d.device_id,
+                        status: d.is_active ? 'OFFLINE' : 'UNKNOWN', // Initial status before WS connection
+                        lastSeen: d.paired_at
+                    })));
+                }
+            } catch (err) {
+                console.error("Failed to fetch devices:", err);
+            }
+        };
+        fetchDevices();
+    }, []);
+
     // Data hooks
     const { lastLocation, status, deviceStatus } = useKinSocket(deviceId, handleAlert);
     const { features, coordinates, loading, error, fetchHistory } = useHistoryScrub(deviceId);
