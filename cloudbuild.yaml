@@ -111,10 +111,11 @@ steps:
       - "--cpu=1"
       - "--memory=512Mi"
       - "--concurrency=80"
+      - "--tag=canary"
       - "--allow-unauthenticated"
       - "--add-cloudsql-instances=kin-tracker:us-central1:kin-db"
       - "--set-secrets=DATABASE_URL=kin-db-url:latest,MQTT_PASSWORD=kin-mqtt-password:latest,JWT_SECRET=kin-jwt-secret:latest,ENCRYPTION_KEY=kin-encryption-key:latest"
-      - "--set-env-vars=MQTT_BROKER=kin-broker,MQTT_PORT=1883,ENVIRONMENT=production,APP_VERSION=${_GIT_SHA}"
+      - "--set-env-vars=MQTT_BROKER=136.116.116.75,MQTT_PORT=1883,ENVIRONMENT=production,APP_VERSION=${_GIT_SHA}"
     waitFor: ["migrate"]
 
   # ────────────────────────────────────────────────────────────────────────────
@@ -126,11 +127,12 @@ steps:
     args:
       - "-c"
       - |
-        CANARY_URL=$$(gcloud run revisions list \
-          --service=kin-api \
+        SERVICE_URL=$$(gcloud run services describe kin-api \
           --region=us-central1 \
-          --format="value(status.url)" \
-          --limit=1)
+          --format="value(status.url)")
+        
+        # Replace https:// with https://canary---
+        CANARY_URL="$${SERVICE_URL/https:\/\//https:\/\/canary---}"
 
         echo "Checking health at: $$CANARY_URL/health"
 
