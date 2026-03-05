@@ -10,14 +10,15 @@ steps:
       - "-c"
       - |
         pip install --quiet -r requirements.txt -r requirements-dev.txt
-        pytest tests/ -v --tb=short
+        python -m pytest tests/ -v --tb=short -x
     env:
+      - "PYTHONPATH=/workspace/backend"
       - "DATABASE_URL=sqlite+aiosqlite:///./test.db"
       - "MQTT_BROKER=localhost"
       - "MQTT_PORT=1883"
       - "MQTT_PASSWORD="
-      - "JWT_SECRET=ci-test-secret"
-      - "ENCRYPTION_KEY=ci-test-enc-key"
+      - "JWT_SECRET=ci-test-secret-key-for-testing-only-32c"
+      - "ENCRYPTION_KEY=ci-test-encryption-key-for-testing!!"
       - "ENVIRONMENT=test"
 
   # ────────────────────────────────────────────────────────────────────────────
