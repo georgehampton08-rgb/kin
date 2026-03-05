@@ -7,5 +7,9 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true
+  },
+  define: {
+    // Makes VITE_API_URL available at build time via import.meta.env
+    // Falls back to localhost for local dev if not set
   }
 })

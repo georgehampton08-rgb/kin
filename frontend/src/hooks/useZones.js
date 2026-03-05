@@ -12,7 +12,8 @@ export function useZones() {
     const [zonePolygons, setZonePolygons] = useState([]);
 
     useEffect(() => {
-        fetch('http://localhost:8000/api/v1/zones/')
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        fetch(`${apiUrl}/api/v1/zones/`)
             .then(r => r.json())
             .then(data => {
                 const features = data.features || [];

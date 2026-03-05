@@ -16,8 +16,9 @@ export function useHistoryScrub(deviceId) {
         setLoading(true);
         setError(null);
         try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
             const resp = await fetch(
-                `http://localhost:8000/api/v1/history/replay/${deviceId}/${date}`
+                `${apiUrl}/api/v1/history/replay/${deviceId}/${date}`
             );
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const data = await resp.json();
