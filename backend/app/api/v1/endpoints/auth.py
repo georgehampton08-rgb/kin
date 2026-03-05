@@ -188,20 +188,29 @@ async def login(req: LoginRequest):
 # ── Create Pairing Token ────────────────────────────────────
 
 @router.post("/create-pairing-token")
-async def create_pairing_token(user: dict = Depends(get_current_user)):
+async def create_pairing_token():
     """Parent creates a one-time pairing token for QR code."""
-    if user.get("role") != "parent":
-        raise HTTPException(status_code=403, detail="Only parents can create pairing tokens")
-
     token_value = secrets.token_urlsafe(48)  # ~64 chars
-    family_id = user["family_id"]
-    user_id = user["sub"]
 
     async with AsyncSessionLocal() as session:
+        # Since dashboard has no login yet, assign token to the first available family
+        result = await session.execute(select(Family).limit(1))
+        family = result.scalar_one_or_none()
+        
+        if not family:
+            # Create a fallback family if DB is totally empty
+            family = Family(name="Kin Default Family")
+            session.add(family)
+            await session.commit()
+            await session.refresh(family)
+            
+        result_user = await session.execute(select(User).limit(1))
+        user = result_user.scalar_one_or_none()
+
         pt = PairingToken(
             token=token_value,
-            family_id=uuid.UUID(family_id),
-            created_by=uuid.UUID(user_id),
+            family_id=family.id,
+            created_by=user.id if user else None,
             expires_at=datetime.now(timezone.utc) + timedelta(minutes=PAIRING_TOKEN_TTL_MINUTES),
         )
         session.add(pt)
@@ -211,9 +220,9 @@ async def create_pairing_token(user: dict = Depends(get_current_user)):
         "pairing_token": token_value,
         "expires_in_seconds": PAIRING_TOKEN_TTL_MINUTES * 60,
         "qr_payload": {
-            "api_url": os.getenv("KIN_API_URL", "http://localhost:8000"),
+            "api_url": os.getenv("KIN_API_URL", "https://kin-api-3snosaq75a-uc.a.run.app"),
             "pairing_token": token_value,
-            "mqtt_host": os.getenv("MQTT_HOST", "localhost"),
+            "mqtt_host": os.getenv("MQTT_HOST", "34.123.69.22"),
             "mqtt_port": int(os.getenv("MQTT_PORT", "1883")),
         },
     }

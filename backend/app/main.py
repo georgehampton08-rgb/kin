@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI):
 # Build CORS origins from env — supports comma-separated list for multi-origin prod setups
 _raw_origins = os.getenv(
     "ALLOWED_ORIGINS",
-    "http://localhost:3000,http://127.0.0.1:3000"
+    "http://localhost:3000,http://127.0.0.1:3000,https://kin-tracker.web.app"
 )
 allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 
