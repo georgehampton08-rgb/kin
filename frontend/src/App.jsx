@@ -8,6 +8,10 @@ import * as turf from '@turf/turf';
 import AddDeviceModal from './components/AddDeviceModal';
 import DeviceStatusPanel from './components/DeviceStatusPanel';
 import DeviceListPanel from './components/DeviceListPanel';
+import CommsPanel from './components/CommsPanel';
+import { useAuth } from './context/AuthContext';
+import Login from './pages/Login';
+import { fetchWithAuth } from './utils/api';
 
 // Returns today's date in YYYY-MM-DD LOCAL format
 function todayStr() {
@@ -29,6 +33,7 @@ const ZONE_LABELS = { safe: 'Safe Zone', caution: 'Caution', restricted: 'Restri
 const ZONE_COLORS = { safe: '#00cc66', caution: '#ffaa00', restricted: '#ff3333' };
 
 export default function App() {
+    const { user, loading: authLoading, logout } = useAuth();
     const [deviceId, setDeviceId] = useState('');
     const [mode, setMode] = useState('live');
     const [historyDate, setHistoryDate] = useState(todayStr());
@@ -41,10 +46,11 @@ export default function App() {
 
     // Fetch paired devices on mount
     useEffect(() => {
+        if (!user) return;
         const fetchDevices = async () => {
             try {
                 const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-                const res = await fetch(`${apiUrl}/api/v1/devices/`);
+                const res = await fetchWithAuth(`${apiUrl}/api/v1/devices/`);
                 if (res.ok) {
                     const data = await res.json();
                     setKnownDevices(data.devices.map(d => ({
@@ -143,6 +149,9 @@ export default function App() {
 
     const scrubPoint = coordinates.length > 0 ? coordinates[scrubIndex] : null;
 
+    if (authLoading) return <div style={{ background: '#090a0f', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>Loading...</div>;
+    if (!user) return <Login />;
+
     return (
         <div className="hud-container">
             {/* Toast container */}
@@ -153,13 +162,14 @@ export default function App() {
                 <div className="hud-title">
                     <h1>Kin Dashboard</h1>
                     <span className="subtitle">
-                        {mode === 'live' ? 'Real-Time Surveillance Link' : 'History Playback'}
+                        {mode === 'live' ? 'Real-Time Surveillance Link' : mode === 'history' ? 'History Playback' : 'Signals Intelligence'}
                     </span>
                 </div>
 
                 <div className="mode-toggle">
                     <button id="btn-live" className={`mode-btn ${mode === 'live' ? 'active' : ''}`} onClick={() => handleModeSwitch('live')}>Live</button>
                     <button id="btn-history" className={`mode-btn ${mode === 'history' ? 'active' : ''}`} onClick={() => handleModeSwitch('history')}>History</button>
+                    <button id="btn-comms" className={`mode-btn ${mode === 'comms' ? 'active' : ''}`} onClick={() => handleModeSwitch('comms')}>Comms</button>
                 </div>
 
                 {mode === 'live' ? (
@@ -175,6 +185,7 @@ export default function App() {
                     <button className="add-device-btn" onClick={() => setIsAddCardOpen(true)}>+</button>
                     <label>Target ID:</label>
                     <input id="device-id-input" value={deviceId} onChange={e => setDeviceId(e.target.value)} placeholder="Enter device ID" />
+                    <button className="mode-btn" onClick={logout} style={{ marginLeft: '12px' }}>Logout</button>
                 </div>
             </header>
 
@@ -218,6 +229,13 @@ export default function App() {
                     zonePolygons={zonePolygons}
                     activeZoneIds={activeZoneIds}
                 />
+
+                {/* Comms Panel Overlay */}
+                {mode === 'comms' && (
+                    <div className="comms-overlay">
+                        <CommsPanel deviceId={deviceId} />
+                    </div>
+                )}
 
                 {/* Device List Panel */}
                 <DeviceListPanel

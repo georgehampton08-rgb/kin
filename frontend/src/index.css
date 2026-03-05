@@ -575,3 +575,214 @@ body {
     opacity: 0.15;
   }
 }
+
+/* ── Comms Panel Overlay ── */
+.comms-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-dark);
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  padding: 24px;
+}
+
+.comms-panel-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  background: var(--bg-dark);
+  z-index: 30;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.comms-panel {
+  width: 100%;
+  max-width: 800px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+.comms-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+}
+
+.comms-header h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.comms-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-light);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.comms-tab {
+  flex: 1;
+  padding: 12px 0;
+  background: transparent;
+  color: var(--text-dim);
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+}
+
+.comms-tab:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.comms-tab.active {
+  color: var(--neon-green);
+  border-bottom: 2px solid var(--neon-green);
+  background: rgba(0, 255, 204, 0.05);
+}
+
+.comms-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.comms-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.comms-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.comms-content::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: 3px;
+}
+
+.comms-empty,
+.comms-loading,
+.comms-error {
+  text-align: center;
+  color: var(--text-dim);
+  padding: 40px;
+  font-style: italic;
+}
+
+.comms-error {
+  color: #ff5555;
+}
+
+.comms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.comms-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 16px;
+  transition: border-color 0.2s;
+}
+
+.comms-card-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  align-items: center;
+}
+
+.comms-pkg {
+  color: var(--neon-green);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.comms-time {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+}
+
+.comms-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.comms-text {
+  color: #ccc;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* SMS Specific */
+.sms-card.incoming {
+  border-left: 3px solid var(--neon-green);
+}
+
+.sms-card.outgoing {
+  border-left: 3px solid #8b92a5;
+  opacity: 0.8;
+}
+
+.comms-sender {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Call Specific */
+.call-card.type-missed {
+  border-left: 3px solid #ff3333;
+}
+
+.call-card.type-incoming {
+  border-left: 3px solid var(--neon-green);
+}
+
+.call-card.type-outgoing {
+  border-left: 3px solid #8b92a5;
+  opacity: 0.8;
+}
+
+.comms-number {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.comms-type {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-weight: 600;
+  margin-right: 12px;
+}
+
+.comms-duration {
+  font-size: 0.85rem;
+  color: var(--neon-green);
+  font-variant-numeric: tabular-nums;
+}
