@@ -31,11 +31,11 @@ jobs:
         run: flutter pub get
 
       - name: Build APK
-        run: flutter build apk --release
+        run: flutter build apk --release --split-per-abi
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-release.apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: app-release-apks
+          path: build/app/outputs/flutter-apk/app-*-release.apk
           retention-days: 7
