@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 # Paths that don't require authentication
 PUBLIC_PATHS = {"/", "/docs", "/redoc", "/openapi.json", "/health"}
-PUBLIC_PREFIXES = ("/api/v1/auth/", "/auth/")
+PUBLIC_PREFIXES = ("/api/v1/auth/", "/auth/", "/api/v1/zones", "/api/v1/location", "/api/v1/devices")
 
 
 class JWTAuthMiddleware(BaseHTTPMiddleware):
