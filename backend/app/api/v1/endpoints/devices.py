@@ -27,3 +27,90 @@ async def list_devices():
         })
 
     return {"devices": devices}
+
+
+@router.get("/{device_id}/notifications")
+async def get_device_notifications(device_id: str, limit: int = 50, offset: int = 0):
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            text("""
+                SELECT id, package_name, title, text, timestamp
+                FROM notifications
+                WHERE device_id = :device_id
+                ORDER BY timestamp DESC
+                LIMIT :limit OFFSET :offset
+            """),
+            {"device_id": device_id, "limit": limit, "offset": offset}
+        )
+        rows = result.fetchall()
+        
+    return {
+        "notifications": [
+            {
+                "id": row.id,
+                "package_name": row.package_name,
+                "title": row.title,
+                "text": row.text,
+                "timestamp": row.timestamp.isoformat() if row.timestamp else None
+            }
+            for row in rows
+        ]
+    }
+
+
+@router.get("/{device_id}/sms")
+async def get_device_sms(device_id: str, limit: int = 50, offset: int = 0):
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            text("""
+                SELECT id, sender, body, timestamp, is_incoming
+                FROM sms_messages
+                WHERE device_id = :device_id
+                ORDER BY timestamp DESC
+                LIMIT :limit OFFSET :offset
+            """),
+            {"device_id": device_id, "limit": limit, "offset": offset}
+        )
+        rows = result.fetchall()
+        
+    return {
+        "sms": [
+            {
+                "id": row.id,
+                "sender": row.sender,
+                "body": row.body,
+                "timestamp": row.timestamp.isoformat() if row.timestamp else None,
+                "is_incoming": row.is_incoming
+            }
+            for row in rows
+        ]
+    }
+
+
+@router.get("/{device_id}/calls")
+async def get_device_calls(device_id: str, limit: int = 50, offset: int = 0):
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            text("""
+                SELECT id, number, duration_seconds, type, timestamp
+                FROM call_logs
+                WHERE device_id = :device_id
+                ORDER BY timestamp DESC
+                LIMIT :limit OFFSET :offset
+            """),
+            {"device_id": device_id, "limit": limit, "offset": offset}
+        )
+        rows = result.fetchall()
+        
+    return {
+        "calls": [
+            {
+                "id": row.id,
+                "number": row.number,
+                "duration_seconds": row.duration_seconds,
+                "type": row.type,
+                "timestamp": row.timestamp.isoformat() if row.timestamp else None
+            }
+            for row in rows
+        ]
+    }

