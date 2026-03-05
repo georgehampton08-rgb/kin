@@ -93,10 +93,10 @@ steps:
     waitFor: ["push-sha", "push-latest"]
 
   # ────────────────────────────────────────────────────────────────────────────
-  # Stage 4: Deploy new revision with --no-traffic (canary)
+  # Stage 4: Deploy to Cloud Run (100% traffic immediately)
   # ────────────────────────────────────────────────────────────────────────────
   - name: "gcr.io/cloud-builders/gcloud"
-    id: "deploy-canary"
+    id: "deploy"
     args:
       - "run"
       - "deploy"
@@ -104,65 +104,17 @@ steps:
       - "--image=us-central1-docker.pkg.dev/$PROJECT_ID/kin/kin-api:${_GIT_SHA}"
       - "--region=us-central1"
       - "--platform=managed"
-      - "--no-traffic"
       - "--min-instances=1"
       - "--max-instances=5"
       - "--port=8080"
       - "--cpu=1"
       - "--memory=512Mi"
       - "--concurrency=80"
-      - "--tag=canary"
       - "--allow-unauthenticated"
       - "--add-cloudsql-instances=kin-tracker:us-central1:kin-db"
       - "--set-secrets=DATABASE_URL=kin-db-url:latest,MQTT_PASSWORD=kin-mqtt-password:latest,JWT_SECRET=kin-jwt-secret:latest,ENCRYPTION_KEY=kin-encryption-key:latest"
       - "--set-env-vars=MQTT_BROKER=136.116.116.75,MQTT_PORT=1883,ENVIRONMENT=production,APP_VERSION=${_GIT_SHA}"
     waitFor: ["migrate"]
-
-  # ────────────────────────────────────────────────────────────────────────────
-  # Stage 5: Health-check the canary revision
-  # ────────────────────────────────────────────────────────────────────────────
-  - name: "gcr.io/cloud-builders/gcloud"
-    id: "health-check"
-    entrypoint: bash
-    args:
-      - "-c"
-      - |
-        SERVICE_URL=$$(gcloud run services describe kin-api \
-          --region=us-central1 \
-          --format="value(status.url)")
-        
-        # Replace https:// with https://canary---
-        CANARY_URL="$${SERVICE_URL/https:\/\//https:\/\/canary---}"
-
-        echo "Checking health at: $$CANARY_URL/health"
-
-        for i in $$(seq 1 12); do
-          STATUS=$$(curl -s -o /dev/null -w "%{http_code}" "$$CANARY_URL/health")
-          echo "Attempt $$i: HTTP $$STATUS"
-          if [ "$$STATUS" = "200" ]; then
-            echo "Health check passed!"
-            exit 0
-          fi
-          sleep 10
-        done
-
-        echo "Health check FAILED after 2 minutes"
-        exit 1
-    waitFor: ["deploy-canary"]
-
-  # ────────────────────────────────────────────────────────────────────────────
-  # Stage 6: Promote to 100% traffic
-  # ────────────────────────────────────────────────────────────────────────────
-  - name: "gcr.io/cloud-builders/gcloud"
-    id: "promote"
-    args:
-      - "run"
-      - "services"
-      - "update-traffic"
-      - "kin-api"
-      - "--region=us-central1"
-      - "--to-latest"
-    waitFor: ["health-check"]
 
 images:
   - "us-central1-docker.pkg.dev/$PROJECT_ID/kin/kin-api:${_GIT_SHA}"
