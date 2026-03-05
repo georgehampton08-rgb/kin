@@ -26,7 +26,7 @@ const ZONE_LABELS = { safe: 'Safe Zone', caution: 'Caution', restricted: 'Restri
 const ZONE_COLORS = { safe: '#00cc66', caution: '#ffaa00', restricted: '#ff3333' };
 
 export default function App() {
-    const [deviceId, setDeviceId] = useState('test_child_chicago');
+    const [deviceId, setDeviceId] = useState('');
     const [mode, setMode] = useState('live');
     const [historyDate, setHistoryDate] = useState(todayStr());
     const [scrubIndex, setScrubIndex] = useState(0);
@@ -128,7 +128,7 @@ export default function App() {
 
                 <div className="device-selector">
                     <label>Target ID:</label>
-                    <input id="device-id-input" value={deviceId} onChange={e => setDeviceId(e.target.value)} />
+                    <input id="device-id-input" value={deviceId} onChange={e => setDeviceId(e.target.value)} placeholder="Enter device ID" />
                 </div>
             </header>
 
