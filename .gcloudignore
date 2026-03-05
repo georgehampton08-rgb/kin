@@ -1,0 +1,39 @@
+# Ignore large dirs that don't belong in the Cloud Build source upload
+.git/
+.gitignore
+
+# Python virtualenv
+backend/venv/
+backend/.venv/
+backend/__pycache__/
+backend/*.pyc
+backend/.pytest_cache/
+backend/osrm-data/
+backend/*.pbf
+backend/*.osm
+backend/backend.log
+backend/backend_err.log
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Flutter / Dart
+build/
+.dart_tool/
+android/
+ios/
+linux/
+macos/
+windows/
+web/
+lib/
+test/
+*.iml
+
+# IDE
+.idea/
+.vscode/
+.antigravity/
+.claude/

@@ -66,10 +66,10 @@ steps:
         /workspace/cloud-sql-proxy \
           --unix-socket=/workspace/cloudsql \
           kin-tracker:us-central1:kin-db &
-        PROXY_PID=$!
+        PROXY_PID=$$!
 
         # Wait for socket to appear
-        for i in $(seq 1 30); do
+        for i in $$(seq 1 30); do
           [ -S "/workspace/cloudsql/kin-tracker:us-central1:kin-db" ] && break
           sleep 1
         done
@@ -78,14 +78,14 @@ steps:
         pip install --quiet asyncpg alembic sqlalchemy geoalchemy2 aiosqlite
 
         # Read the full Cloud SQL URL from Secret Manager and swap the host to the proxy socket
-        DB_URL=$(gcloud secrets versions access latest --secret=kin-db-url)
+        DB_URL=$$(gcloud secrets versions access latest --secret=kin-db-url)
         # Replace the host param to point to the local proxy socket
-        PROXY_URL=$(echo "$DB_URL" | sed 's|host=.*|host=/workspace/cloudsql/kin-tracker:us-central1:kin-db|')
+        PROXY_URL=$$(echo "$$DB_URL" | sed 's|host=.*|host=/workspace/cloudsql/kin-tracker:us-central1:kin-db|')
 
         cd backend
-        DATABASE_URL="$PROXY_URL" alembic upgrade head
+        DATABASE_URL="$$PROXY_URL" alembic upgrade head
 
-        kill $PROXY_PID || true
+        kill $$PROXY_PID || true
     waitFor: ["push-sha", "push-latest"]
 
   # ────────────────────────────────────────────────────────────────────────────
@@ -122,18 +122,18 @@ steps:
     args:
       - "-c"
       - |
-        CANARY_URL=$(gcloud run revisions list \
+        CANARY_URL=$$(gcloud run revisions list \
           --service=kin-api \
           --region=us-central1 \
           --format="value(status.url)" \
           --limit=1)
 
-        echo "Checking health at: $CANARY_URL/health"
+        echo "Checking health at: $$CANARY_URL/health"
 
-        for i in $(seq 1 12); do
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$CANARY_URL/health")
-          echo "Attempt $i: HTTP $STATUS"
-          if [ "$STATUS" = "200" ]; then
+        for i in $$(seq 1 12); do
+          STATUS=$$(curl -s -o /dev/null -w "%{http_code}" "$$CANARY_URL/health")
+          echo "Attempt $$i: HTTP $$STATUS"
+          if [ "$$STATUS" = "200" ]; then
             echo "Health check passed!"
             exit 0
           fi
