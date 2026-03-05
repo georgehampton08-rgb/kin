@@ -29,4 +29,3 @@ htmlcov/
 # Database logs
 *.db
 *.sqlite3
-alembic.ini
