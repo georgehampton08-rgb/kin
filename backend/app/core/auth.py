@@ -34,7 +34,8 @@ current_user_id: ContextVar[Optional[str]] = ContextVar("current_user_id", defau
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    # bcrypt has a hard 72-byte limit — truncate to avoid ValueError
+    return pwd_context.hash(password[:72])
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
