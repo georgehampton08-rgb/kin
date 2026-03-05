@@ -45,6 +45,10 @@ dependencies:
   dio: ^5.7.0
   device_info_plus: ^11.3.0
   http: ^1.2.0
+  shared_preferences: ^2.2.3
+  notification_listener_service: ^1.1.0
+  flutter_sms_inbox: ^1.2.0
+  call_log: ^3.2.0
 
 dev_dependencies:
   flutter_test:

@@ -3,6 +3,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:app_settings/app_settings.dart';
 import '../main.dart'; // To navigate to LocationScreen
 import 'qr_scanner_screen.dart';
+import 'package:notification_listener_service/notification_listener_service.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -92,8 +93,50 @@ class _OnboardingScreenState extends State<OnboardingScreen> with WidgetsBinding
             onPressed: _requestWhenInUse,
           ),
 
-          // Page 3: Request "Always" via App Settings
+          // Page 3: Communications Permissions
+          _buildCommsPermissionPage(),
+
+          // Page 4: Request "Always" via App Settings
           _buildFinalPage(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCommsPermissionPage() {
+    return Padding(
+      padding: const EdgeInsets.all(32.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.settings_phone, size: 80, color: Colors.deepPurple),
+          const SizedBox(height: 24),
+          Text('Communications Tracking', style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          Text('To fully monitor device activity, we need access to SMS, Call Logs, and Notifications.', style: Theme.of(context).textTheme.bodyLarge, textAlign: TextAlign.center),
+          const Spacer(),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () async {
+                await [
+                  Permission.sms,
+                  Permission.phone,
+                ].request();
+
+                await NotificationListenerService.requestPermission();
+
+                if (!mounted) return;
+                _pageController.nextPage(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                );
+              },
+              style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(16)),
+              child: const Text('Grant Comm Access', style: TextStyle(fontSize: 18)),
+            ),
+          ),
+          const SizedBox(height: 32),
         ],
       ),
     );

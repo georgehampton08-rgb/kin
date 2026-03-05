@@ -4,6 +4,7 @@ import 'package:flutter_background_geolocation/flutter_background_geolocation.da
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'providers/location_provider.dart';
 import 'services/location_service.dart';
+import 'services/comms_service.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/debug_screen.dart';
 
@@ -32,6 +33,8 @@ class KinApp extends StatefulWidget {
 
 class _KinAppState extends State<KinApp> {
   late LocationService _locationService;
+  bool _isInitialized = false;
+  bool _isPaired = false;
 
   @override
   void initState() {
@@ -48,9 +51,16 @@ class _KinAppState extends State<KinApp> {
       
       if (token != null && deviceId != null && apiUrl != null) {
         _locationService.setCredentials(token: token, deviceId: deviceId, apiUrl: apiUrl);
+        setState(() {
+          _isPaired = true;
+        });
+        CommsService.init();
       }
       
       _locationService.init();
+      setState(() {
+        _isInitialized = true;
+      });
     });
   }
 
@@ -62,10 +72,13 @@ class _KinAppState extends State<KinApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const OnboardingScreen(),
+      home: !_isInitialized 
+          ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+          : (_isPaired ? const LocationScreen() : const OnboardingScreen()),
     );
   }
 }
+
 
 class LocationScreen extends StatelessWidget {
   const LocationScreen({super.key});
