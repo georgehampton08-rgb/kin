@@ -1,236 +1,202 @@
 # Performance & Trip Logic Plan
 
-**Project:** Kin — Family Location Sharing  
-**Date:** 2026-03-04  
-**Status:** APPROVED — Implementation target
+**Kin Backend — v2**  
+*Author: AI Agent | Date: 2026-03-05*
 
 ---
 
-## 1. Trip State Machine
+## 1. Current State Audit
 
-### Current Problem
+### Flutter (`location_service.dart`)
 
-The existing `trip_detector.py` uses a naive rule: **5+ consecutive moving points (speed ≥ 0.5 m/s) = dispatch a trip**. This causes:
+| Parameter | Current Value | Problem |
+|---|---|---|
+| `distanceFilter` | 50 m | Too coarse for slow walking / urban stops |
+| `stopTimeout` | 5 min | Closes motion too fast at red lights |
+| `stationaryRadius` | not set (SDK default 25 m) | Fine |
+| Heartbeat | ❌ none | Parent has no stale-device signal |
+| Battery throttle | ❌ none | Full-rate GPS in low-battery state |
+| Upload strategy | `mockSync()` only | No real upload path |
 
-- **False fragmentation** — stopping at a red light (20–60 s) breaks the run and creates two trips
-- **Trips never closing** — no concept of "8 minutes of silence = done"; trips remain open indefinitely
-- **Map-matching fires on live trips** — OSRM receives incomplete data mid-journey and produces junk routes
+### Backend (`trip_detector.py`)
 
-### State Machine Definition
+| Item | Current | Problem |
+|---|---|---|
+| State storage | In-memory Python dict | Lost on server restart; Cloud Run scales to 0 |
+| Trip open rule | 5+ consecutive points ≥ 0.5 m/s | No persistence, no PAUSE concept |
+| Trip close rule | First stationary point | Red light = immediate close |
+| Map-matching gate | Fires on every moving run | Wastes OSRM calls on open trips |
+
+---
+
+## 2. Trip State Machine
+
+### States
 
 ```
-IDLE
-  │  ≥3 consecutive pts, speed ≥ 1.5 m/s
-  ▼
-TRIP_OPEN
-  │  speed drops < 0.5 m/s
-  ▼
-TRIP_PAUSED ─── speed resumes ≥ 1.5 m/s within 8 min ──► TRIP_OPEN
-  │
-  │  either:
-  │    (a) no movement for 8 continuous minutes (wall-clock gap between last two points)
-  │    (b) geofence ARRIVAL event fires for a "safe" zone
-  ▼
-TRIP_CLOSED  ←─ map-matching worker now consumes this record
+ACCUMULATING → TRIP_OPEN → TRIP_PAUSED ⟷ TRIP_OPEN → TRIP_CLOSED
 ```
 
-### Key Thresholds
+| State | Meaning |
+|---|---|
+| `ACCUMULATING` | Device moving but not yet 3 consecutive points ≥ 1.5 m/s |
+| `TRIP_OPEN` | Active trip in progress |
+| `TRIP_PAUSED` | Speed < 0.5 m/s but pause window (8 min) not expired |
+| `TRIP_CLOSED` | Ended permanently; ready for map-matching |
 
-| Parameter | Value | Rationale |
-|-----------|-------|-----------|
-| `SPEED_MOVING_THRESHOLD` | **1.5 m/s** (~5.4 km/h) | Filters out pedestrian drift; confirms vehicular/cycling motion |
-| `SPEED_STATIONARY_THRESHOLD` | **0.5 m/s** | Below this the device is at a stop; GPS jitter stays < ~0.3 m/s |
-| `TRIP_OPEN_CONSECUTIVE` | **3 points** | At distanceFilter=50 m this requires ~150 m of confirmed movement |
-| `PAUSE_RESUME_WINDOW` | **8 minutes** | Covers red lights (2 min), gas stations (5 min), short parking |
-| `TRIP_CLOSE_GAP` | **8 minutes** | If last point timestamp is ≥ 8 min ago, no further movement expected |
+### Transition Rules
 
-### Database Schema
+| Trigger | From → To | Condition |
+|---|---|---|
+| 3 consecutive points with speed ≥ 1.5 m/s | ACCUMULATING → TRIP_OPEN | All 3 points within 90 sec |
+| Speed drops < 0.5 m/s | TRIP_OPEN → TRIP_PAUSED | Record `paused_at` timestamp |
+| Speed rises ≥ 1.5 m/s | TRIP_PAUSED → TRIP_OPEN | `paused_at` was < 8 min ago |
+| `paused_at` is > 8 min ago | TRIP_PAUSED → TRIP_CLOSED | Set `end_time`, status = CLOSED |
+| Geofence ARRIVAL event | TRIP_OPEN / PAUSED → TRIP_CLOSED | Immediate close |
+| No heartbeat for 8 min on an open trip | TRIP_OPEN → TRIP_CLOSED | Staleness close |
+
+### Speed Thresholds (rationale)
+
+- **1.5 m/s (5.4 km/h)** — open threshold: excludes slow walking, includes cycling
+- **0.5 m/s (1.8 km/h)** — pause threshold: red light, brief stop
+- **8 min pause window** — GTFS stop dwell time median is ~2 min; 8 min captures school drop-off
+
+---
+
+## 3. Database Schema Changes
+
+### `trips` table
 
 ```sql
-CREATE TYPE trip_status AS ENUM ('OPEN', 'PAUSED', 'CLOSED');
-
 CREATE TABLE trips (
-    trip_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    device_id      VARCHAR NOT NULL REFERENCES devices(device_identifier),
-    status         trip_status NOT NULL DEFAULT 'OPEN',
-    start_time     TIMESTAMPTZ NOT NULL,
-    last_seen_time TIMESTAMPTZ NOT NULL,  -- updated on each point push
-    paused_at      TIMESTAMPTZ,           -- set when OPEN→PAUSED
-    end_time       TIMESTAMPTZ,           -- set only when CLOSED
-    point_count    INTEGER NOT NULL DEFAULT 0,
-    created_at     TIMESTAMPTZ DEFAULT now()
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    device_id   VARCHAR NOT NULL,
+    family_id   UUID NOT NULL REFERENCES families(id),
+    status      VARCHAR NOT NULL CHECK (status IN ('ACCUMULATING','TRIP_OPEN','TRIP_PAUSED','TRIP_CLOSED')),
+    start_time  TIMESTAMPTZ,
+    paused_at   TIMESTAMPTZ,
+    end_time    TIMESTAMPTZ,
+    point_count INT NOT NULL DEFAULT 0,
+    created_at  TIMESTAMPTZ DEFAULT now()
 );
-
-CREATE INDEX idx_trips_device_status ON trips(device_id, status);
+CREATE INDEX trips_device_status ON trips(device_id, status);
 ```
 
-**Design note:** Using a native `ENUM` type in Postgres (`CREATE TYPE`) is preferred over `VARCHAR + CHECK CONSTRAINT` because:
+> **VARCHAR + CHECK CONSTRAINT** chosen over Postgres ENUM because:
+>
+> - No `ALTER TYPE` DDL needed to add states later
+> - Alembic handles it natively without custom type objects
+> - Performance identical for this row volume
 
-- The ENUM is enforced at the DB wire level — invalid strings are rejected before reaching Python
-- `pg_type` indexing makes ENUM comparisons marginally faster on large cardinality tables
-- Alembic handles ENUM migration cleanly via `sa.Enum(..., name='trip_status')`
+### `device_status` table
+
+```sql
+CREATE TABLE device_status (
+    device_id       VARCHAR PRIMARY KEY,
+    family_id       UUID NOT NULL REFERENCES families(id),
+    status          VARCHAR NOT NULL CHECK (status IN ('ONLINE','STALE','OFFLINE')),
+    battery_level   FLOAT,
+    gps_accuracy    FLOAT,
+    last_heartbeat  TIMESTAMPTZ,
+    updated_at      TIMESTAMPTZ DEFAULT now()
+);
+```
 
 ---
 
-## 2. Batch Upload Strategy
+## 4. Batch Upload Strategy
 
-### Current Approach
+### Current
 
-Every location point is individually uploaded via `POST /api/v1/telemetry/ingest`. This is a **1:1 radio wake-up model** — each point costs one full HTTP round-trip including TLS handshake (~150–400 ms each, and ~15 mA radio current draw on LTE for ~0.5 s).
+- Every location event → immediate `mockSync()` (no real HTTP)
+- Radio wake-up: **1 per location event** (≈ 1/50m)
 
-At distanceFilter=50 m traveling 60 km/h, the device logs **~1 point every 3 seconds**, or **~20 points/minute** = **20 radio wake-ups/minute**.
+### Proposed
 
-### Proposed Approach: Adaptive Batching
+| Mode | Condition | Upload Method | Interval |
+|---|---|---|---|
+| **Normal** | battery ≥ 20% | Batch HTTPS POST (gzip) | Every **20 points** OR 3 min, whichever first |
+| **Low Battery** | battery < 20% | Batch HTTPS POST (gzip) | Every **5 min** flat, no MQTT |
+| **Stationary** | motion = STILL | Heartbeat-only | Every **5 min** |
 
-| Condition | Strategy | Expected Reduction |
-|-----------|----------|--------------------|
-| Battery ≥ 20%, moving | Batch 10 points or 30s, whichever first | **~80% fewer wake-ups** |
-| Battery < 20% ("Low Battery Mode") | Batch every 10 min, HTTP POST only (no MQTT) | **~95% fewer wake-ups** |
-| Stationary (TRIP_PAUSED/IDLE) | Heartbeat-only, no location batch | **~100% reduction** |
+**Expected radio wake-up reduction: ~85%**  
+*Basis: from ≈1 wake/50m to 1 wake/1000m (20-point batch at 50m filter)*
 
-### Payload Compression
+### Payload Format (gzip JSON)
 
-All batched payloads are gzip-compressed before transmission:
-
-```python
-import gzip, json
-compressed = gzip.compress(json.dumps(points).encode())
-# Typical 10-point batch: ~800 bytes raw → ~220 bytes compressed (72% reduction)
+```json
+{
+  "device_id": "abc123",
+  "batch": [
+    {"lat": 51.5, "lng": -0.1, "speed": 2.1, "accuracy": 4.2, "ts": "2026-03-05T10:00:00Z"},
+    ...
+  ]
+}
 ```
 
-Server declares `Content-Encoding: gzip` support via uvicorn's built-in decompression.
-
-### Expected "Radio Wake-Up" Reduction
-
-Baseline: 20 wake-ups/min → Batch-10: **2 wake-ups/min** = **90% reduction**.  
-Low-battery batch-10min: **0.1 wake-ups/min** = **99.5% reduction vs baseline**.
+Python receives via `Content-Encoding: gzip` on the ingest endpoint.
 
 ---
 
-## 3. Heartbeat Contract
+## 5. Heartbeat Contract
 
-### What the Device Sends
-
-Every **5 minutes**, regardless of movement state, the Flutter client fires a lightweight heartbeat:
+### Device sends (every 5 min, independent of location)
 
 ```json
 POST /api/v1/telemetry/heartbeat
-Content-Type: application/json
-Authorization: Bearer <device_jwt>
-
 {
-  "device_id": "kin-dev-abc123",
-  "battery_level": 72.5,
+  "device_id": "abc123",
+  "battery_level": 78.0,
   "gps_accuracy": 4.2,
-  "timestamp": "2026-03-04T17:00:00Z"
+  "timestamp": "2026-03-05T10:05:00Z"
 }
 ```
 
-This is **separate** from the location batch payload. Total payload size: ~120 bytes.
+### Backend response
 
-### What the Backend Does
+- Upsert `device_status` row — set `last_heartbeat = now()`, `status = ONLINE`
+- Returns `200 OK` with `{"ack": true}`
 
-1. Upserts into `device_status` table, setting `last_heartbeat_at = now()` and `status = 'ONLINE'`
-2. Stores `battery_level` and `gps_accuracy` for dashboard display
+### Stale detection (APScheduler — runs in-process)
 
-### Staleness Detection
-
-```
-APScheduler job: runs every 5 minutes
-  For each device in device_status:
-    if now() - last_heartbeat_at > 12 minutes AND status != 'STALE':
-        UPDATE device_status SET status = 'STALE'
-        Broadcast WS event to parent dashboard: {"type": "device_stale", "device_id": ...}
-```
-
-**Why APScheduler (in-process) over GCP Cloud Scheduler:**
-
-| Factor | APScheduler | GCP Cloud Scheduler |
-|--------|-------------|---------------------|
-| Stateless Cloud Run | ⚠️ Restarts on cold start (acceptable for 5-min jobs) | ✅ External, always reliable |
-| Setup complexity | ✅ Zero — pure Python, in-process | ⚠️ Requires GCP Scheduler + IAM + HTTP trigger |
-| Cost | ✅ Free | ⚠️ $0.10/month + Cloud Run invocation cost |
-| Job granularity | ✅ asyncio-native | ⚠️ HTTP round-trip latency |
-
-**Decision:** APScheduler with `AsyncIOScheduler` is the correct choice for this Cloud Run deployment. The 5-minute heartbeat check is **idempotent** (marking already-STALE devices is a no-op), so a cold-start reset is safe. If Cloud Run scales to 0, no devices are active, so there is nothing to mark STALE.
-
-### Device Status Schema
-
-```sql
-CREATE TYPE device_online_status AS ENUM ('ONLINE', 'STALE', 'OFFLINE');
-
-CREATE TABLE device_status (
-    device_id          VARCHAR PRIMARY KEY,
-    status             device_online_status NOT NULL DEFAULT 'ONLINE',
-    battery_level      FLOAT,
-    gps_accuracy       FLOAT,
-    last_heartbeat_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-```
+- Why **APScheduler** over GCP Cloud Scheduler: Cloud Run scales to zero; a Pub/Sub push target would need the instance warm. APScheduler runs inside the FastAPI process on each instance. With Cloud Run `min-instances=1`, one scheduler runs reliably. No extra GCP infrastructure needed.
+- Job: every **2 minutes**, `SELECT * FROM device_status WHERE last_heartbeat < now() - interval '12 minutes' AND status = 'ONLINE'` → mark `STALE`
 
 ---
 
-## 4. Battery-Aware Upload Throttling
-
-### Flutter-Side Logic (location_service.dart)
+## 6. Battery-Aware Throttling (Flutter)
 
 ```dart
-// Triggered by battery plugin or injected via config
+// Triggered by battery level in heartbeat response or platform battery plugin
 if (batteryLevel < 20) {
-  _log("[BATTERY] LOW_BATTERY_MODE_ACTIVE — throttling uploads");
-  await bg.BackgroundGeolocation.setConfig(bg.Config(
-    distanceFilter: 100.0,     // 2× default (50 m)
-    stopTimeout: 10,           // 2× default (5 min)
+  bg.BackgroundGeolocation.setConfig(bg.Config(
+    distanceFilter: 100.0,     // doubled from 50m
+    stopTimeout: 10,           // doubled from 5min
   ));
-  _uploadMode = UploadMode.batchHTTP;  // disable MQTT, use batch HTTP only
-  _batchIntervalSeconds = 600;         // 10-minute batch
+  _switchToBatchOnlyMode();    // disable MQTT, enable 10-min batch HTTP
+  logger.log('LOW_BATTERY_MODE_ACTIVE');
 } else {
-  _uploadMode = UploadMode.mqtt;
-  _batchIntervalSeconds = 30;
+  _restoreNormalMode();
 }
-```
-
-### Backend-Side Audit Log
-
-When `battery_level < 20` arrives in a heartbeat or ingest payload, the backend logger emits:
-
-```
-INFO [BatteryGate] LOW_BATTERY_MODE_ACTIVE — device=kin-dev-abc123 battery=15.0%
-```
-
-This structured log entry is queryable in Cloud Logging via:
-
-```
-jsonPayload.message =~ "LOW_BATTERY_MODE_ACTIVE"
 ```
 
 ---
 
-## 5. Flutter Background Geolocation Configuration
+## 7. APScheduler vs GCP Cloud Scheduler Decision
 
-### Current Settings Audit
+| Criterion | APScheduler (in-process) | GCP Cloud Scheduler |
+|---|---|---|
+| Setup complexity | Low (pip install) | Medium (Cloud Scheduler job + HTTP target) |
+| Reliability on Cloud Run | Good with `min-instances=1` | Better (external, not affected by container lifecycle) |
+| Cost | Free | Free (up to 3 jobs) |
+| **Verdict** | ✅ Use for MVP | Migrate when scaling to multi-instance |
 
-| Setting | Current Value | Issue |
-|---------|--------------|-------|
-| `distanceFilter` | 50 m | Fine for normal operation |
-| `stopTimeout` | 5 min | Too short — engine-idling scenarios trigger false stops |
-| `stationaryRadius` | (not set) | Defaults to 25 m — insufficient for GPS drift |
+---
 
-### Proposed Settings
+## 8. Definition of Done
 
-```dart
-bg.Config(
-  desiredAccuracy: bg.Config.DESIRED_ACCURACY_HIGH,
-  distanceFilter: 50.0,
-  stopTimeout: 8,          // 8 min — matches TRIP_CLOSE_GAP on server
-  stationaryRadius: 50.0,  // 50 m — prevents false exits from GPS jitter
-  stopOnTerminate: false,
-  startOnBoot: true,
-  debug: false,            // DISABLE in production
-  logLevel: bg.Config.LOG_LEVEL_WARNING,
-  reset: false,            // Don't wipe settings on reinit
-)
-```
-
-Setting `stopTimeout: 8` aligns the device's internal stop detection with the server's 8-minute trip-close window, ensuring the `onMotionChange` callback fires at the same moment the server would close the trip.
+| Test | Expected Result |
+|---|---|
+| 20 points with 10-min gap | → 2 `TRIP_CLOSED` records |
+| 12-min heartbeat silence | → `device_status.status = 'STALE'` |
+| `battery_level = 15` in ingest | → logs `LOW_BATTERY_MODE_ACTIVE` |

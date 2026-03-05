@@ -1,25 +1,48 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background_geolocation/flutter_background_geolocation.dart' as bg;
+import 'package:http/http.dart' as http;
 import '../providers/location_provider.dart';
 import 'database_service.dart';
 
+// ── Constants ────────────────────────────────────────────────
+const String _baseUrl = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: 'http://10.0.2.2:8000/api/v1',
+);
+const double _lowBatteryThreshold = 20.0;
+const int _heartbeatIntervalMinutes = 5;
+
+// Normal mode config
+const double _normalDistanceFilter = 50.0;
+const int _normalStopTimeout = 5;
+
+// Low-battery mode config (doubled)
+const double _lowBatteryDistanceFilter = 100.0;
+const int _lowBatteryStopTimeout = 10;
+
 @pragma('vm:entry-point')
 void locationHeadlessTask(bg.HeadlessEvent headlessEvent) async {
-  debugPrint('[HeadlessTask]: $headlessEvent');
   switch (headlessEvent.name) {
     case bg.Event.LOCATION:
       bg.Location location = headlessEvent.event;
-      debugPrint('[Headless Location] Inserted to DB -> ${location.coords.latitude}, ${location.coords.longitude}');
       await DatabaseService().insertLocation({
         'latitude': location.coords.latitude,
         'longitude': location.coords.longitude,
         'accuracy': location.coords.accuracy,
+        'speed': location.coords.speed,
         'timestamp': location.timestamp,
+        'synced': 0,
       });
+      break;
+    case bg.Event.MOTIONCHANGE:
+      bg.Location location = headlessEvent.event;
+      debugPrint('[HeadlessMotionChange] isMoving=${location.isMoving}');
       break;
     case bg.Event.ACTIVITYCHANGE:
       bg.ActivityChangeEvent event = headlessEvent.event;
-      debugPrint('[Headless Activity Change] STATIONARY vs. MOVING: ${event.activity}');
+      debugPrint('[HeadlessActivityChange] ${event.activity} confidence=${event.confidence}');
       break;
     default:
       break;
@@ -31,57 +54,168 @@ class LocationService {
 
   LocationService(this.locationProvider);
 
+  Timer? _heartbeatTimer;
+  bool _lowBatteryMode = false;
+  String? _authToken;
+  String? _deviceId;
+
+  /// Call after login to store the JWT and device identifier
+  void setCredentials({required String token, required String deviceId}) {
+    _authToken = token;
+    _deviceId = deviceId;
+  }
+
   Future<void> init() async {
-    // 1. Listen to events
+    // ── Location events ──────────────────────────────────────
     bg.BackgroundGeolocation.onLocation((bg.Location location) async {
       locationProvider.updateLocation(location);
+
+      final battery = location.battery.level * 100;
+      final speed = location.coords.speed;
+
+      // Battery-aware throttling
+      await _applyBatteryMode(battery);
+
+      // Store locally
       await DatabaseService().insertLocation({
         'latitude': location.coords.latitude,
         'longitude': location.coords.longitude,
         'accuracy': location.coords.accuracy,
+        'speed': speed,
+        'battery_level': battery,
         'timestamp': location.timestamp,
+        'synced': 0,
       });
+
+      // Upload (batch or MQTT depending on mode)
+      await DatabaseService().flushIfReady(
+        lowBatteryMode: _lowBatteryMode,
+        token: _authToken,
+        deviceId: _deviceId,
+      );
     }, (bg.LocationError error) {
       debugPrint('[onLocation] ERROR: $error');
     });
 
-    bg.BackgroundGeolocation.onMotionChange((bg.Location location) {
-      debugPrint('[onMotionChange]: $location');
+    // ── Motion change — trip boundary events ─────────────────
+    bg.BackgroundGeolocation.onMotionChange((bg.Location location) async {
+      final isMoving = location.isMoving;
+      debugPrint('[onMotionChange] isMoving=$isMoving speed=${location.coords.speed}');
+
+      if (!isMoving) {
+        // Device stopped — the backend state machine handles PAUSED→CLOSED
+        // but we send a heartbeat immediately so the backend knows
+        await _sendHeartbeat(
+          batteryLevel: location.battery.level * 100,
+          gpsAccuracy: location.coords.accuracy,
+        );
+      }
+    });
+
+    // ── Activity change ──────────────────────────────────────
+    bg.BackgroundGeolocation.onActivityChange((bg.ActivityChangeEvent event) {
+      debugPrint(
+        '[onActivityChange] activity=${event.activity} '
+        'confidence=${event.confidence}',
+      );
     });
 
     bg.BackgroundGeolocation.onProviderChange((bg.ProviderChangeEvent event) {
       debugPrint('[onProviderChange]: $event');
     });
 
-    bg.BackgroundGeolocation.onActivityChange((bg.ActivityChangeEvent event) {
-      debugPrint('[Activity Change] STATIONARY vs. MOVING: ${event.activity}');
-    });
-
-    // 2. Configure the plugin
+    // ── Configuration ────────────────────────────────────────
     await bg.BackgroundGeolocation.ready(bg.Config(
       desiredAccuracy: bg.Config.DESIRED_ACCURACY_HIGH,
-      distanceFilter: 50.0,
-      stopTimeout: 5,
+      distanceFilter: _normalDistanceFilter,
+      stopTimeout: _normalStopTimeout,
       stopOnTerminate: false,
       startOnBoot: true,
-      debug: true,
-      logLevel: bg.Config.LOG_LEVEL_VERBOSE,
-      reset: true,
+      debug: false,
+      logLevel: bg.Config.LOG_LEVEL_WARNING,
+      reset: false, // Don't reset on each ready() call
     ));
 
-    // 3. Dry-run check
+    // ── Dry-run state log ────────────────────────────────────
     bg.State state = await bg.BackgroundGeolocation.state;
-    debugPrint('[Dry-Run Check] SDK Internal Settings:');
-    // ignore: deprecated_member_use
-    debugPrint('- distanceFilter: ${state.distanceFilter} meters');
-    // ignore: deprecated_member_use
-    debugPrint('- stopTimeout: ${state.stopTimeout} minutes');
-    // ignore: deprecated_member_use
-    debugPrint('- stopOnTerminate: ${state.stopOnTerminate}');
-    // ignore: deprecated_member_use
-    debugPrint('- startOnBoot: ${state.startOnBoot}');
+    debugPrint('[LocationService] Config: '
+        'distanceFilter=${state.distanceFilter}m '
+        'stopTimeout=${state.stopTimeout}min');
 
-    // 3. Start the plugin
+    // ── Start heartbeat timer ────────────────────────────────
+    _startHeartbeatTimer();
+
     await bg.BackgroundGeolocation.start();
+  }
+
+  // ── Battery-aware throttling ─────────────────────────────
+
+  Future<void> _applyBatteryMode(double batteryLevel) async {
+    final shouldBeLowBattery = batteryLevel < _lowBatteryThreshold;
+
+    if (shouldBeLowBattery && !_lowBatteryMode) {
+      _lowBatteryMode = true;
+      debugPrint('[LocationService] LOW_BATTERY_MODE_ACTIVE battery=$batteryLevel%');
+      await bg.BackgroundGeolocation.setConfig(bg.Config(
+        distanceFilter: _lowBatteryDistanceFilter,
+        stopTimeout: _lowBatteryStopTimeout,
+      ));
+    } else if (!shouldBeLowBattery && _lowBatteryMode) {
+      _lowBatteryMode = false;
+      debugPrint('[LocationService] LOW_BATTERY_MODE_DEACTIVATED battery=$batteryLevel%');
+      await bg.BackgroundGeolocation.setConfig(bg.Config(
+        distanceFilter: _normalDistanceFilter,
+        stopTimeout: _normalStopTimeout,
+      ));
+    }
+  }
+
+  // ── Heartbeat ────────────────────────────────────────────
+
+  void _startHeartbeatTimer() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = Timer.periodic(
+      Duration(minutes: _heartbeatIntervalMinutes),
+      (_) async {
+        final state = await bg.BackgroundGeolocation.state;
+        await _sendHeartbeat(
+          batteryLevel: null, // will be populated from battery plugin
+          gpsAccuracy: null,
+        );
+      },
+    );
+    debugPrint('[LocationService] Heartbeat timer started (every ${_heartbeatIntervalMinutes}min)');
+  }
+
+  Future<void> _sendHeartbeat({
+    double? batteryLevel,
+    double? gpsAccuracy,
+  }) async {
+    if (_authToken == null || _deviceId == null) return;
+
+    try {
+      final body = json.encode({
+        'device_id': _deviceId,
+        if (batteryLevel != null) 'battery_level': batteryLevel,
+        if (gpsAccuracy != null) 'gps_accuracy': gpsAccuracy,
+        'timestamp': DateTime.now().toUtc().toIso8601String(),
+      });
+
+      await http.post(
+        Uri.parse('$_baseUrl/telemetry/heartbeat'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_authToken',
+        },
+        body: body,
+      );
+      debugPrint('[LocationService] Heartbeat sent device=$_deviceId');
+    } catch (e) {
+      debugPrint('[LocationService] Heartbeat failed: $e');
+    }
+  }
+
+  void dispose() {
+    _heartbeatTimer?.cancel();
   }
 }

@@ -130,6 +130,70 @@ def get_provider() -> MapMatchingProvider:
 # ──────────────────────────────────────────────────────────────
 # Public entry point — called by trip_detector
 # ──────────────────────────────────────────────────────────────
+async def match_trip_by_id(trip_id: str) -> MatchedRoute | None:
+    """
+    Entry point called by the trip state machine.
+    Fetches coordinates for a TRIP_CLOSED trip from location_history
+    and runs map-matching.
+
+    GATE: Only processes trips with status = 'TRIP_CLOSED'.
+    Open or paused trips are silently skipped.
+    """
+    from sqlalchemy import text as sa_text
+
+    async with AsyncSessionLocal() as session:
+        # Verify trip is actually closed
+        trip_result = await session.execute(
+            sa_text("""
+                SELECT device_id, start_time, end_time, status
+                FROM trips WHERE id = :trip_id
+            """),
+            {"trip_id": trip_id},
+        )
+        trip = trip_result.fetchone()
+
+    if trip is None:
+        logger.warning(f"[MapMatch] Trip {trip_id} not found — skipping")
+        return None
+
+    if trip.status != "TRIP_CLOSED":
+        logger.debug(
+            f"[MapMatch] Trip {trip_id} has status '{trip.status}' — "
+            "map-matching gated to TRIP_CLOSED only, skipping"
+        )
+        return None
+
+    device_id = trip.device_id
+    trip_start = trip.start_time
+    trip_end = trip.end_time
+
+    # Fetch raw coordinates from location_history for this device in trip window
+    async with AsyncSessionLocal() as session:
+        coords_result = await session.execute(
+            sa_text("""
+                SELECT ST_X(coordinates::geometry) AS lon,
+                       ST_Y(coordinates::geometry) AS lat
+                FROM location_history
+                WHERE device_id = :device_id
+                  AND timestamp >= :start_time
+                  AND timestamp <= :end_time
+                ORDER BY timestamp ASC
+            """),
+            {"device_id": device_id, "start_time": trip_start, "end_time": trip_end},
+        )
+        rows = coords_result.fetchall()
+
+    if len(rows) < 2:
+        logger.warning(
+            f"[MapMatch] Trip {trip_id} has only {len(rows)} points — "
+            "cannot match, need at least 2"
+        )
+        return None
+
+    coords = [(row.lon, row.lat) for row in rows]
+    return await match_trip(device_id, coords, trip_start, trip_end)
+
+
 async def match_trip(
     device_id: str,
     coords: list[tuple[float, float]],     # (lon, lat) pairs

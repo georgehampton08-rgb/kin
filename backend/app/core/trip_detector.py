@@ -1,85 +1,238 @@
 """
-Trip Detector
-=============
-Maintains a per-device rolling buffer of recent location points.
-When 5+ consecutive points with speed > 0.5 m/s are detected, a trip
-is considered complete and map-matching is triggered as a background task.
+Postgres-Backed Trip State Machine
+=====================================
+Replaces the in-memory trip_detector.py.
+
+State transitions (all persisted in the `trips` table):
+
+  ACCUMULATING → TRIP_OPEN   : 3 consecutive points ≥ 1.5 m/s within 90 sec
+  TRIP_OPEN    → TRIP_PAUSED : speed < 0.5 m/s (record paused_at)
+  TRIP_PAUSED  → TRIP_OPEN   : speed ≥ 1.5 m/s AND paused_at < 8 min ago
+  TRIP_PAUSED  → TRIP_CLOSED : paused_at ≥ 8 min ago (arrival)
+  TRIP_OPEN    → TRIP_CLOSED : geofence ARRIVAL event (external call)
+
+Map-matching is gated on TRIP_CLOSED only — never called for open or paused trips.
+
+Battery note:
+  If battery_level < 20, logs LOW_BATTERY_MODE_ACTIVE on every point.
 """
 import logging
-from collections import defaultdict, deque
-from datetime import datetime
-from fastapi import BackgroundTasks
+import uuid
+from datetime import datetime, timezone, timedelta
+
+from sqlalchemy import text, select
+
+from app.db.session import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 
-# Minimum consecutive moving points to declare a trip
-TRIP_THRESHOLD = 5
-# Speed threshold in m/s below which a point is considered "stationary"
-MOVING_SPEED_THRESHOLD = 0.5
-# Max buffer size per device
-BUFFER_SIZE = 50
+# ── Thresholds ────────────────────────────────────────────────
+OPEN_SPEED_MS = 1.5          # m/s — minimum speed to open/resume
+PAUSE_SPEED_MS = 0.5         # m/s — below this triggers PAUSED
+OPEN_CONSECUTIVE = 3         # consecutive points needed to open
+OPEN_WINDOW_SEC = 90         # those 3 points must be within 90 sec
+PAUSE_TIMEOUT_MIN = 8        # minutes before PAUSED → CLOSED
+LOW_BATTERY_THRESHOLD = 20.0 # %
+
+# Per-device short-term accumulator (in-memory, lightweight)
+_accumulators: dict[str, list] = {}  # device_id → [(speed, ts), ...]
 
 
-class _DeviceBuffer:
-    """Rolling buffer of (lon, lat, speed, timestamp) tuples for one device."""
-    def __init__(self):
-        self.points: deque = deque(maxlen=BUFFER_SIZE)
-        self.dispatched_trips: set[int] = set()  # track buffer positions already sent
-
-
-_buffers: dict[str, _DeviceBuffer] = defaultdict(_DeviceBuffer)
-
-
-def push_point(
+async def push_point(
     device_id: str,
+    family_id: str,
     lon: float,
     lat: float,
     speed: float | None,
     timestamp: datetime,
-    background_tasks: BackgroundTasks,
+    battery_level: float | None = None,
 ) -> None:
     """
-    Called on every telemetry ingestion.
-    Adds the point to the device buffer and checks if a trip threshold is met.
+    Called on every telemetry point. Drives the state machine.
     """
-    buf = _buffers[device_id]
-    buf.points.append((lon, lat, speed or 0.0, timestamp))
+    spd = speed or 0.0
 
-    _check_and_dispatch(device_id, buf, background_tasks)
+    # Battery warning
+    if battery_level is not None and battery_level < LOW_BATTERY_THRESHOLD:
+        logger.info(
+            f"[TripDetector] LOW_BATTERY_MODE_ACTIVE device={device_id} "
+            f"battery={battery_level}%"
+        )
 
+    async with AsyncSessionLocal() as session:
+        # Get current open/paused/accumulating trip for this device
+        result = await session.execute(
+            text("""
+                SELECT id, status, start_time, paused_at, point_count
+                FROM trips
+                WHERE device_id = :device_id
+                  AND status IN ('ACCUMULATING', 'TRIP_OPEN', 'TRIP_PAUSED')
+                ORDER BY created_at DESC
+                LIMIT 1
+            """),
+            {"device_id": device_id},
+        )
+        row = result.fetchone()
 
-def _check_and_dispatch(device_id: str, buf: _DeviceBuffer, background_tasks: BackgroundTasks):
-    """Extract a consecutive run of moving points and dispatch map-matching if threshold met."""
-    from app.core.map_matching import match_trip  # local import avoids circular deps
+        now = timestamp or datetime.now(timezone.utc)
 
-    points = list(buf.points)
-    moving_run: list = []
-
-    for pt in reversed(points):
-        lon, lat, speed, ts = pt
-        if speed >= MOVING_SPEED_THRESHOLD:
-            moving_run.insert(0, pt)
+        if row is None:
+            # No active trip — try to accumulate
+            await _handle_accumulating(session, device_id, family_id, spd, now)
         else:
-            # A stationary point breaks the run
-            break
+            trip_id = row.id
+            status = row.status
+            start_time = row.start_time
+            paused_at = row.paused_at
+            point_count = row.point_count
 
-    if len(moving_run) < TRIP_THRESHOLD:
-        return
+            if status == 'ACCUMULATING':
+                await _handle_accumulating(
+                    session, device_id, family_id, spd, now,
+                    trip_id=trip_id, start_time=start_time, count=point_count,
+                )
+            elif status == 'TRIP_OPEN':
+                await _handle_open(session, trip_id, spd, now, point_count)
+            elif status == 'TRIP_PAUSED':
+                await _handle_paused(session, trip_id, device_id, spd, now, paused_at)
 
-    # Build a stable fingerprint for this batch to avoid duplicate dispatches
-    trip_key = id(moving_run[0])
-    if trip_key in buf.dispatched_trips:
-        return
-    buf.dispatched_trips.add(trip_key)
+        await session.commit()
 
-    coords = [(lon, lat) for lon, lat, _, _ in moving_run]
-    trip_start = moving_run[0][3]
-    trip_end = moving_run[-1][3]
 
-    logger.info(
-        f"[TripDetector] Trip detected for '{device_id}': "
-        f"{len(coords)} points from {trip_start} → {trip_end}"
-    )
+async def _handle_accumulating(
+    session, device_id, family_id, spd, now, trip_id=None, start_time=None, count=0
+):
+    """Accumulate fast points; open trip when threshold met."""
+    if spd >= OPEN_SPEED_MS:
+        new_count = count + 1
 
-    # Fire-and-forget via FastAPI BackgroundTasks
-    background_tasks.add_task(match_trip, device_id, coords, trip_start, trip_end)
+        if trip_id is None:
+            # Create new ACCUMULATING record
+            await session.execute(
+                text("""
+                    INSERT INTO trips (id, device_id, family_id, status, start_time, point_count)
+                    VALUES (:id, :device_id, :family_id, 'ACCUMULATING', :start_time, 1)
+                """),
+                {
+                    "id": str(uuid.uuid4()),
+                    "device_id": device_id,
+                    "family_id": str(family_id),
+                    "start_time": now,
+                },
+            )
+            logger.debug(f"[TripDetector] {device_id}: ACCUMULATING (1/{OPEN_CONSECUTIVE})")
+        elif new_count >= OPEN_CONSECUTIVE:
+            # Check window: start_time must be within OPEN_WINDOW_SEC
+            if start_time and (now - _ensure_tz(start_time)).total_seconds() <= OPEN_WINDOW_SEC:
+                await session.execute(
+                    text("""
+                        UPDATE trips SET status = 'TRIP_OPEN', point_count = :count
+                        WHERE id = :id
+                    """),
+                    {"count": new_count, "id": str(trip_id)},
+                )
+                logger.info(f"[TripDetector] {device_id}: TRIP_OPEN ✅ ({new_count} pts)")
+            else:
+                # Window expired — reset accumulator
+                await session.execute(
+                    text("UPDATE trips SET status = 'TRIP_CLOSED', end_time = :end WHERE id = :id"),
+                    {"end": now, "id": str(trip_id)},
+                )
+                logger.debug(f"[TripDetector] {device_id}: ACCUMULATING window expired, reset")
+        else:
+            await session.execute(
+                text("UPDATE trips SET point_count = :count WHERE id = :id"),
+                {"count": new_count, "id": str(trip_id)},
+            )
+            logger.debug(f"[TripDetector] {device_id}: ACCUMULATING ({new_count}/{OPEN_CONSECUTIVE})")
+    else:
+        # Too slow — abandon accumulation if it exists
+        if trip_id:
+            await session.execute(
+                text("UPDATE trips SET status = 'TRIP_CLOSED', end_time = :end WHERE id = :id"),
+                {"end": now, "id": str(trip_id)},
+            )
+
+
+async def _handle_open(session, trip_id, spd, now, point_count):
+    """Open trip — check for pause transition."""
+    if spd < PAUSE_SPEED_MS:
+        await session.execute(
+            text("""
+                UPDATE trips SET status = 'TRIP_PAUSED', paused_at = :paused_at,
+                    point_count = :count
+                WHERE id = :id
+            """),
+            {"paused_at": now, "count": point_count + 1, "id": str(trip_id)},
+        )
+        logger.info(f"[TripDetector] trip {trip_id}: TRIP_OPEN → TRIP_PAUSED")
+    else:
+        await session.execute(
+            text("UPDATE trips SET point_count = :count WHERE id = :id"),
+            {"count": point_count + 1, "id": str(trip_id)},
+        )
+
+
+async def _handle_paused(session, trip_id, device_id, spd, now, paused_at):
+    """Paused trip — resume or close based on elapsed time."""
+    if paused_at is None:
+        paused_at = now
+
+    paused_duration = (now - _ensure_tz(paused_at)).total_seconds() / 60.0
+
+    if paused_duration >= PAUSE_TIMEOUT_MIN:
+        # Timeout expired — close permanently
+        await session.execute(
+            text("""
+                UPDATE trips SET status = 'TRIP_CLOSED', end_time = :end WHERE id = :id
+            """),
+            {"end": now, "id": str(trip_id)},
+        )
+        logger.info(
+            f"[TripDetector] trip {trip_id}: TRIP_PAUSED → TRIP_CLOSED "
+            f"(pause timeout {paused_duration:.1f} min)"
+        )
+        # Gate: trigger map-matching only on freshly closed trips
+        from app.core.map_matching import match_trip_by_id
+        import asyncio
+        asyncio.create_task(match_trip_by_id(str(trip_id)))
+    elif spd >= OPEN_SPEED_MS:
+        # Resume
+        await session.execute(
+            text("""
+                UPDATE trips SET status = 'TRIP_OPEN', paused_at = NULL WHERE id = :id
+            """),
+            {"id": str(trip_id)},
+        )
+        logger.info(f"[TripDetector] trip {trip_id}: TRIP_PAUSED → TRIP_OPEN (resumed)")
+    # else: still paused, waiting
+
+
+async def close_trip_on_arrival(device_id: str) -> None:
+    """External call — geofence arrival event forces trip closed immediately."""
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            text("""
+                UPDATE trips
+                SET status = 'TRIP_CLOSED', end_time = now()
+                WHERE device_id = :device_id
+                  AND status IN ('TRIP_OPEN', 'TRIP_PAUSED')
+                RETURNING id
+            """),
+            {"device_id": device_id},
+        )
+        closed = [str(row[0]) for row in result.fetchall()]
+        await session.commit()
+
+    for trip_id in closed:
+        logger.info(f"[TripDetector] trip {trip_id}: forced TRIP_CLOSED (geofence arrival)")
+        from app.core.map_matching import match_trip_by_id
+        import asyncio
+        asyncio.create_task(match_trip_by_id(trip_id))
+
+
+def _ensure_tz(dt: datetime) -> datetime:
+    """Ensure datetime is timezone-aware (UTC)."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt

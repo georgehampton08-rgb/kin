@@ -1,25 +1,28 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-import asyncio
 from app.api.v1.api import api_router
 from app.core.security import JWTAuthMiddleware
 from app.core.mqtt import MQTTListener
 from app.core.ws_manager import ws_manager
+from app.core.scheduler import start_scheduler, stop_scheduler
 
 mqtt_listener = MQTTListener()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     mqtt_listener.start()
+    start_scheduler()
     yield
     # Shutdown
+    stop_scheduler()
     mqtt_listener.stop()
 
-app = FastAPI(title="Kin Backend API", version="1.0.0", lifespan=lifespan)
 
-# CORS - allow React dev server at localhost:3000
+app = FastAPI(title="Kin Backend API", version="2.0.0", lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -28,11 +31,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# JWT auth middleware (applied after CORS so preflight passes)
 app.add_middleware(JWTAuthMiddleware)
-
-# Include v1 routers
 app.include_router(api_router, prefix="/api/v1")
+
 
 @app.websocket("/ws/live/{device_id}")
 async def websocket_endpoint(websocket: WebSocket, device_id: str):
@@ -43,6 +44,7 @@ async def websocket_endpoint(websocket: WebSocket, device_id: str):
     except WebSocketDisconnect:
         ws_manager.disconnect(device_id, websocket)
 
+
 @app.get("/")
 def root():
-    return {"message": "Welcome to the Kin API"}
+    return {"message": "Welcome to the Kin API v2"}
