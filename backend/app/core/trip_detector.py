@@ -95,8 +95,15 @@ async def push_point(
                 await _handle_open(session, trip_id, spd, now, point_count)
             elif status == 'TRIP_PAUSED':
                 await _handle_paused(session, trip_id, device_id, spd, now, paused_at)
-
         await session.commit()
+        
+    from app.core.ws_manager import ws_manager
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(ws_manager.push_device_status(device_id))
+    except RuntimeError:
+        pass
 
 
 async def _handle_accumulating(
@@ -227,8 +234,10 @@ async def close_trip_on_arrival(device_id: str) -> None:
     for trip_id in closed:
         logger.info(f"[TripDetector] trip {trip_id}: forced TRIP_CLOSED (geofence arrival)")
         from app.core.map_matching import match_trip_by_id
+        from app.core.ws_manager import ws_manager
         import asyncio
         asyncio.create_task(match_trip_by_id(trip_id))
+        asyncio.create_task(ws_manager.push_device_status(device_id))
 
 
 def _ensure_tz(dt: datetime) -> datetime:

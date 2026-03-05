@@ -51,6 +51,10 @@ async def _mark_stale_devices() -> None:
         logger.warning(
             f"[Scheduler] Marked {len(stale_ids)} device(s) STALE: {stale_ids}"
         )
+        from app.core.ws_manager import ws_manager
+        # Notify connected dashboards
+        for stale_id in stale_ids:
+            await ws_manager.push_device_status(stale_id)
 
     # Also close any TRIP_OPEN / TRIP_PAUSED trips for stale devices
     if stale_ids:

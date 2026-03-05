@@ -1,0 +1,40 @@
+﻿[!] Flutter (Channel master, 3.42.0-1.0.pre-381, on Microsoft Windows [Version 10.0.26200.7922], locale en-US) [1,326ms]
+    ΓÇó Flutter version 3.42.0-1.0.pre-381 on channel master at C:\src\flutter
+    ! The flutter binary is not on your path. Consider adding C:\src\flutter\bin to your path.
+    ! The dart binary is not on your path. Consider adding C:\src\flutter\bin to your path.
+    ΓÇó Upstream repository https://github.com/flutter/flutter.git
+    ΓÇó Framework revision 340ba4fd42 (2 days ago), 2026-03-03 21:38:56 -0500
+    ΓÇó Engine revision 340ba4fd42
+    ΓÇó Dart version 3.12.0 (build 3.12.0-201.0.dev)
+    ΓÇó DevTools version 2.55.0
+    ΓÇó Feature flags: enable-web, enable-linux-desktop, enable-macos-desktop, enable-windows-desktop, enable-android, enable-ios, cli-animations, enable-native-assets, enable-swift-package-manager, omit-legacy-version-file, enable-lldb-debugging, enable-uiscene-migration, enable-riscv64
+    ΓÇó If those were intentional, you can disregard the above warnings; however it is recommended to use "git" directly to perform update checks and upgrades.
+
+[ΓêÜ] Windows Version (11 Pro 64-bit, 25H2, 2009) [788ms]
+
+[X] Android toolchain - develop for Android devices [72ms]
+    X Unable to locate Android SDK.
+      Install Android Studio from: https://developer.android.com/studio/index.html
+      On first launch it will assist you in installing the Android SDK components.
+      (or visit https://flutter.dev/to/windows-android-setup for detailed instructions).
+      If the Android SDK has been installed to a custom location, please use
+      `flutter config --android-sdk` to update to that location.
+
+
+[ΓêÜ] Chrome - develop for the web [62ms]
+    ΓÇó Chrome at C:\Program Files\Google\Chrome\Application\chrome.exe
+
+[ΓêÜ] Visual Studio - develop Windows apps (Visual Studio Community 2022 17.4.4) [61ms]
+    ΓÇó Visual Studio at C:\Program Files\Microsoft Visual Studio\2022\Community
+    ΓÇó Visual Studio Community 2022 version 17.4.33213.308
+    ΓÇó Windows 10 SDK version 10.0.22000.0
+
+[ΓêÜ] Connected device (3 available) [74ms]
+    ΓÇó Windows (desktop) ΓÇó windows ΓÇó windows-x64    ΓÇó Microsoft Windows [Version 10.0.26200.7922]
+    ΓÇó Chrome (web)      ΓÇó chrome  ΓÇó web-javascript ΓÇó Google Chrome 145.0.7632.117
+    ΓÇó Edge (web)        ΓÇó edge    ΓÇó web-javascript ΓÇó Microsoft Edge 145.0.3800.82
+
+[ΓêÜ] Network resources [316ms]
+    ΓÇó All expected network resources are available.
+
+! Doctor found issues in 2 categories.

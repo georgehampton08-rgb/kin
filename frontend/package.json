@@ -14,7 +14,9 @@
   "type": "commonjs",
   "dependencies": {
     "@turf/turf": "^7.3.4",
+    "date-fns": "^4.1.0",
     "maplibre-gl": "^5.19.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-hot-toast": "^2.6.0"

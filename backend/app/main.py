@@ -53,6 +53,7 @@ app.include_router(api_router, prefix="/api/v1")
 @app.websocket("/ws/live/{device_id}")
 async def websocket_endpoint(websocket: WebSocket, device_id: str):
     await ws_manager.connect(device_id, websocket)
+    await ws_manager.push_device_status(device_id)
     try:
         while True:
             await websocket.receive_text()

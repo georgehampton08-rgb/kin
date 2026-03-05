@@ -10,6 +10,7 @@ import { useState, useEffect, useRef } from 'react';
 export function useKinSocket(deviceId, onAlert) {
     const [lastLocation, setLastLocation] = useState(null);
     const [status, setStatus] = useState('connecting');
+    const [deviceStatus, setDeviceStatus] = useState(null);
     const wsRef = useRef(null);
     const reconnectRef = useRef(null);
     const onAlertRef = useRef(onAlert);
@@ -43,6 +44,14 @@ export function useKinSocket(deviceId, onAlert) {
                             battery: data.battery_level,
                             timestamp: Date.now()
                         });
+                    } else if (data.type === 'status_update') {
+                        setDeviceStatus({
+                            status: data.status,
+                            battery: data.battery,
+                            gpsAccuracy: data.gps_accuracy,
+                            lastSeen: data.last_seen,
+                            tripStatus: data.trip_status
+                        });
                     } else if (data.type === 'geofence_alert') {
                         // Fire the alert callback (non-blocking)
                         if (onAlertRef.current) onAlertRef.current(data);
@@ -69,5 +78,5 @@ export function useKinSocket(deviceId, onAlert) {
         };
     }, [deviceId]);
 
-    return { lastLocation, status };
+    return { lastLocation, status, deviceStatus };
 }

@@ -48,6 +48,42 @@ class ConnectionManager:
         for dead in dead_connections:
             self.disconnect(device_id, dead)
 
+    async def push_device_status(self, device_id: str):
+        """Fetch current device status and trip status from DB, then broadcast to dashboard."""
+        from app.db.session import AsyncSessionLocal
+        from sqlalchemy import text
+        
+        # Don't waste DB queries if no one is listening
+        if device_id not in self.active_connections or not self.active_connections[device_id]:
+            return
+
+        async with AsyncSessionLocal() as session:
+            # Get device status
+            status_res = await session.execute(
+                text("SELECT status, battery_level, gps_accuracy, last_heartbeat FROM device_status WHERE device_id = :device_id"),
+                {"device_id": device_id}
+            )
+            device_status = status_res.fetchone()
+            
+            # Get trip status
+            trip_res = await session.execute(
+                text("SELECT status FROM trips WHERE device_id = :device_id AND status IN ('ACCUMULATING', 'TRIP_OPEN', 'TRIP_PAUSED') ORDER BY created_at DESC LIMIT 1"),
+                {"device_id": device_id}
+            )
+            trip_status = trip_res.fetchone()
+
+        if device_status:
+            payload = {
+                "type": "status_update",
+                "status": device_status.status,
+                "battery": device_status.battery_level,
+                "gps_accuracy": device_status.gps_accuracy,
+                "last_seen": device_status.last_heartbeat.isoformat() if device_status.last_heartbeat else None,
+                "trip_status": trip_status.status if trip_status else "STATIONARY"
+            }
+            await self.broadcast(device_id, payload)
+
 
 # Singleton instance shared across the app
+
 ws_manager = ConnectionManager()

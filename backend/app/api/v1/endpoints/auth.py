@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-PAIRING_TOKEN_TTL_MINUTES = 15
+PAIRING_TOKEN_TTL_MINUTES = 10
 
 
 # ── Schemas ──────────────────────────────────────────────────

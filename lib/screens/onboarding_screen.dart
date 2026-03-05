@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:app_settings/app_settings.dart';
 import '../main.dart'; // To navigate to LocationScreen
+import 'qr_scanner_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -181,9 +182,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> with WidgetsBinding
             width: double.infinity,
             child: ElevatedButton(
               onPressed: isOptimal ? () {
-                // Navigate to Main App Screen
+                // Navigate to QR Scanner Screen
                 Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const LocationScreen()),
+                  MaterialPageRoute(builder: (_) => const QRScannerScreen()),
                 );
               } : null,
               style: ElevatedButton.styleFrom(

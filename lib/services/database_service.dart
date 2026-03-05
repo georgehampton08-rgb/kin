@@ -6,10 +6,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:http/http.dart' as http;
 
-const String _baseUrl = String.fromEnvironment(
-  'API_BASE_URL',
-  defaultValue: 'http://10.0.2.2:8000/api/v1',
-);
+
 
 // Batch thresholds
 const int _normalBatchSize = 20;
@@ -97,8 +94,9 @@ class DatabaseService {
     required bool lowBatteryMode,
     required String? token,
     required String? deviceId,
+    required String? apiUrl,
   }) async {
-    if (token == null || deviceId == null) {
+    if (token == null || deviceId == null || apiUrl == null) {
       debugPrint('[SyncTask] No credentials — skipping flush');
       return;
     }
@@ -134,7 +132,7 @@ class DatabaseService {
       final compressed = gzip.encode(utf8.encode(bodyJson));
 
       final response = await http.post(
-        Uri.parse('$_baseUrl/telemetry/ingest/batch'),
+        Uri.parse('$apiUrl/api/v1/telemetry/ingest/batch'),
         headers: {
           'Content-Type': 'application/json',
           'Content-Encoding': 'gzip',

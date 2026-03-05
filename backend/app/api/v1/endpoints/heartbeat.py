@@ -59,4 +59,15 @@ async def heartbeat(
         )
         await session.commit()
 
+    from app.core.ws_manager import ws_manager
+    import asyncio
+    
+    # Broadcast new status and battery to dashboards
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(ws_manager.push_device_status(payload.device_id))
+    except RuntimeError:
+        # If no running loop, just don't push (shouldn't happen in fastapi endpoint)
+        pass
+
     return {"ack": True, "device_id": payload.device_id, "status": "ONLINE"}

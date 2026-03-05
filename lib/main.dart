@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_background_geolocation/flutter_background_geolocation.dart' as bg;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'providers/location_provider.dart';
 import 'services/location_service.dart';
 import 'screens/onboarding_screen.dart';
@@ -36,10 +37,19 @@ class _KinAppState extends State<KinApp> {
   void initState() {
     super.initState();
     // Initialize the LocationService
-    // We delay the initialization slightly to allow the Provider to initialize fully for the tree
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final locationProvider = Provider.of<LocationProvider>(context, listen: false);
       _locationService = LocationService(locationProvider);
+      
+      const storage = FlutterSecureStorage();
+      final token = await storage.read(key: 'access_token');
+      final deviceId = await storage.read(key: 'device_id');
+      final apiUrl = await storage.read(key: 'api_url');
+      
+      if (token != null && deviceId != null && apiUrl != null) {
+        _locationService.setCredentials(token: token, deviceId: deviceId, apiUrl: apiUrl);
+      }
+      
       _locationService.init();
     });
   }

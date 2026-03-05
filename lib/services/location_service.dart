@@ -7,10 +7,6 @@ import '../providers/location_provider.dart';
 import 'database_service.dart';
 
 // ── Constants ────────────────────────────────────────────────
-const String _baseUrl = String.fromEnvironment(
-  'API_BASE_URL',
-  defaultValue: 'http://10.0.2.2:8000/api/v1',
-);
 const double _lowBatteryThreshold = 20.0;
 const int _heartbeatIntervalMinutes = 5;
 
@@ -58,11 +54,13 @@ class LocationService {
   bool _lowBatteryMode = false;
   String? _authToken;
   String? _deviceId;
+  String? _apiUrl;
 
   /// Call after login to store the JWT and device identifier
-  void setCredentials({required String token, required String deviceId}) {
+  void setCredentials({required String token, required String deviceId, required String apiUrl}) {
     _authToken = token;
     _deviceId = deviceId;
+    _apiUrl = apiUrl;
   }
 
   Future<void> init() async {
@@ -92,6 +90,7 @@ class LocationService {
         lowBatteryMode: _lowBatteryMode,
         token: _authToken,
         deviceId: _deviceId,
+        apiUrl: _apiUrl,
       );
     }, (bg.LocationError error) {
       debugPrint('[onLocation] ERROR: $error');
@@ -202,7 +201,7 @@ class LocationService {
       });
 
       await http.post(
-        Uri.parse('$_baseUrl/telemetry/heartbeat'),
+        Uri.parse('$_apiUrl/api/v1/telemetry/heartbeat'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $_authToken',

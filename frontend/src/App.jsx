@@ -5,6 +5,8 @@ import { useKinSocket } from './hooks/useKinSocket';
 import { useHistoryScrub } from './hooks/useHistoryScrub';
 import { useZones } from './hooks/useZones';
 import * as turf from '@turf/turf';
+import AddDeviceModal from './components/AddDeviceModal';
+import DeviceStatusPanel from './components/DeviceStatusPanel';
 
 // Returns today's date in YYYY-MM-DD LOCAL format
 function todayStr() {
@@ -33,9 +35,10 @@ export default function App() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [activeTripIdx, setActiveTripIdx] = useState(null);
     const [activeZoneIds, setActiveZoneIds] = useState(new Set());
+    const [isAddCardOpen, setIsAddCardOpen] = useState(false);
 
     // Data hooks
-    const { lastLocation, status } = useKinSocket(deviceId, handleAlert);
+    const { lastLocation, status, deviceStatus } = useKinSocket(deviceId, handleAlert);
     const { features, coordinates, loading, error, fetchHistory } = useHistoryScrub(deviceId);
     const { zones, zonePolygons } = useZones();
 
@@ -127,6 +130,7 @@ export default function App() {
                 )}
 
                 <div className="device-selector">
+                    <button className="add-device-btn" onClick={() => setIsAddCardOpen(true)}>+</button>
                     <label>Target ID:</label>
                     <input id="device-id-input" value={deviceId} onChange={e => setDeviceId(e.target.value)} placeholder="Enter device ID" />
                 </div>
@@ -187,6 +191,7 @@ export default function App() {
                 {/* Live Telemetry HUD */}
                 {mode === 'live' && lastLocation && (
                     <div className="telemetry-overlay">
+                        <DeviceStatusPanel deviceStatus={deviceStatus} />
                         <div className="telemetry-bar">
                             <div className="stat">
                                 <span className="label">SPD</span>
@@ -235,9 +240,17 @@ export default function App() {
           box-shadow: 0 8px 24px rgba(0,0,0,0.4);
         }
         .toast-icon { font-size: 1.4rem; line-height: 1; }
-        .toast-title { font-size: 0.7rem; color: #8b92a5; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
         .toast-msg strong { color: #00ffcc; }
+        .add-device-btn {
+            background: #00ffcc; color: #000; border: none; font-size: 1.2rem;
+            width: 28px; height: 28px; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; cursor: pointer;
+            font-weight: bold; margin-right: 8px;
+        }
+        .add-device-btn:hover { background: #00ccaa; }
+        .device-selector { display: flex; align-items: center; }
       `}</style>
+            {isAddCardOpen && <AddDeviceModal onClose={() => setIsAddCardOpen(false)} />}
         </div>
     );
 }
