@@ -27,6 +27,13 @@ import geoalchemy2
 # for 'autogenerate' support
 target_metadata = Base.metadata
 
+# Override DB URL from environment if DATABASE_URL is set (local dev + CI/CD)
+import os as _os
+_db_url = _os.getenv("DATABASE_URL")
+if _db_url:
+    config.set_main_option("sqlalchemy.url", _db_url)
+
+
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")

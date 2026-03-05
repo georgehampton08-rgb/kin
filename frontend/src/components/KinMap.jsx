@@ -113,6 +113,7 @@ export default function KinMap({
             el.className = 'child-marker';
             const dot = document.createElement('div'); dot.className = 'marker-dot'; el.appendChild(dot);
             const pulse = document.createElement('div'); pulse.className = 'marker-pulse'; el.appendChild(pulse);
+            const pulseSlow = document.createElement('div'); pulseSlow.className = 'marker-pulse-slow'; el.appendChild(pulseSlow);
 
             markerRef.current = new maplibregl.Marker({ element: el })
                 .setLngLat([-87.6230, 41.8827])

@@ -7,6 +7,7 @@ import { useZones } from './hooks/useZones';
 import * as turf from '@turf/turf';
 import AddDeviceModal from './components/AddDeviceModal';
 import DeviceStatusPanel from './components/DeviceStatusPanel';
+import DeviceListPanel from './components/DeviceListPanel';
 
 // Returns today's date in YYYY-MM-DD LOCAL format
 function todayStr() {
@@ -36,11 +37,31 @@ export default function App() {
     const [activeTripIdx, setActiveTripIdx] = useState(null);
     const [activeZoneIds, setActiveZoneIds] = useState(new Set());
     const [isAddCardOpen, setIsAddCardOpen] = useState(false);
+    const [knownDevices, setKnownDevices] = useState([]);
 
     // Data hooks
     const { lastLocation, status, deviceStatus } = useKinSocket(deviceId, handleAlert);
     const { features, coordinates, loading, error, fetchHistory } = useHistoryScrub(deviceId);
     const { zones, zonePolygons } = useZones();
+
+    // Track all devices we've seen with their latest status
+    useEffect(() => {
+        if (!deviceId) return;
+        setKnownDevices(prev => {
+            const existing = prev.find(d => d.device_id === deviceId);
+            const updated = {
+                device_id: deviceId,
+                status: deviceStatus?.status || (status === 'connected' ? 'ONLINE' : status === 'connecting' ? 'STALE' : 'OFFLINE'),
+                battery: deviceStatus?.battery ?? lastLocation?.battery ?? null,
+                gpsAccuracy: deviceStatus?.gpsAccuracy ?? null,
+                lastSeen: deviceStatus?.lastSeen ?? (lastLocation ? new Date().toISOString() : null),
+            };
+            if (existing) {
+                return prev.map(d => d.device_id === deviceId ? updated : d);
+            }
+            return [...prev, updated];
+        });
+    }, [deviceId, status, deviceStatus, lastLocation]);
 
     // Check which zones the current live marker is inside
     useEffect(() => {
@@ -175,6 +196,13 @@ export default function App() {
                     isHistory={mode === 'history'}
                     zonePolygons={zonePolygons}
                     activeZoneIds={activeZoneIds}
+                />
+
+                {/* Device List Panel */}
+                <DeviceListPanel
+                    devices={knownDevices}
+                    activeDeviceId={deviceId}
+                    onSelectDevice={id => setDeviceId(id)}
                 />
 
                 {/* Zone Legend */}

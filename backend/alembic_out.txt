@@ -1,0 +1,456 @@
+﻿alembic : INFO  
+[alembic.runtime.migration] 
+Context impl PostgresqlImpl.
+At line:1 char:30
++ 
+.\venv\Scripts\Activate.ps1; 
+alembic upgrade head 2>&1 | 
+Out-File -En ...
++                            
+  ~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (INFO  [  
+  alembic....PostgresqlImp   
+ l.:String) [], RemoteExc    
+eption
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+INFO  
+[alembic.runtime.migration] 
+Will assume transactional 
+DDL.
+INFO  
+[alembic.runtime.migration] 
+Running upgrade f1a2b3c4d5e6 
+-> c1d50cf6d6ef, allow_null_p
+airing_token_created_by
+Traceback (most recent call 
+last):
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\dialects\postgresq
+l\asyncpg.py", line 550, in 
+_prepare_and_execute
+    self._rows = deque(await 
+prepared_stmt.fetch(*paramete
+rs))
+                       ^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+asyncpg\prepared_stmt.py", 
+line 177, in fetch
+    data = await 
+self.__bind_execute(args, 0, 
+timeout)
+           ^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+asyncpg\prepared_stmt.py", 
+line 268, in __bind_execute
+    data, status, _ = await 
+self.__do_execute(
+                      
+^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+asyncpg\prepared_stmt.py", 
+line 257, in __do_execute
+    return await 
+executor(protocol)
+           
+^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/prot
+ocol.pyx", line 205, in 
+bind_execute
+    return await waiter
+asyncpg.exceptions.DependentO
+bjectsStillExistError: 
+cannot drop table 
+spatial_ref_sys because 
+extension postgis requires it
+HINT:  You can drop 
+extension postgis instead.
+
+The above exception was the 
+direct cause of the 
+following exception:
+
+Traceback (most recent call 
+last):
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\engine\base.py", 
+line 1967, in 
+_exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\engine\default.py"
+, line 952, in do_execute
+    
+cursor.execute(statement, 
+parameters)
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\dialects\postgresq
+l\asyncpg.py", line 585, in 
+execute
+    self._adapt_connection.aw
+ait_(
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\util\_concurrency_
+py3k.py", line 132, in 
+await_only
+    return current.parent.swi
+tch(awaitable)  # type: ignor
+e[no-any-return,attr-defined]
+ # noqa: E501
+           ^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\util\_concurrency_
+py3k.py", line 196, in 
+greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\dialects\postgresq
+l\asyncpg.py", line 563, in 
+_prepare_and_execute
+    
+self._handle_exception(error)
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\dialects\postgresq
+l\asyncpg.py", line 513, in 
+_handle_exception
+    self._adapt_connection._h
+andle_exception(error)
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\dialects\postgresq
+l\asyncpg.py", line 797, in 
+_handle_exception
+    raise translated_error 
+from error
+sqlalchemy.dialects.postgresq
+l.asyncpg.AsyncAdapt_asyncpg_
+dbapi.Error: <class 'asyncpg.
+exceptions.DependentObjectsSt
+illExistError'>: cannot drop 
+table spatial_ref_sys 
+because extension postgis 
+requires it
+HINT:  You can drop 
+extension postgis instead.
+
+The above exception was the 
+direct cause of the 
+following exception:
+
+Traceback (most recent call 
+last):
+  File "<frozen runpy>", 
+line 198, in 
+_run_module_as_main
+  File "<frozen runpy>", 
+line 88, in _run_code
+  File "C:\Users\georg\kin\ba
+ckend\venv\Scripts\alembic.ex
+e\__main__.py", line 7, in 
+<module>
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+alembic\config.py", line 
+1047, in main
+    CommandLine(prog=prog).ma
+in(argv=argv)
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+alembic\config.py", line 
+1037, in main
+    self.run_cmd(cfg, 
+options)
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+alembic\config.py", line 
+971, in run_cmd
+    fn(
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+alembic\command.py", line 
+483, in upgrade
+    script.run_env()
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+alembic\script\base.py", 
+line 545, in run_env
+    util.load_python_file(sel
+f.dir, "env.py")
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+alembic\util\pyfiles.py", 
+line 116, in load_python_file
+    module = 
+load_module_py(module_id, 
+path)
+             ^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+alembic\util\pyfiles.py", 
+line 136, in load_module_py
+    spec.loader.exec_module(m
+odule)  # type: ignore
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^
+  File "<frozen importlib._bo
+otstrap_external>", line 
+995, in exec_module
+  File "<frozen 
+importlib._bootstrap>", line 
+488, in 
+_call_with_frames_removed
+  File "C:\Users\georg\kin\ba
+ckend\alembic\env.py", line 
+101, in <module>
+    run_migrations_online()
+  File "C:\Users\georg\kin\ba
+ckend\alembic\env.py", line 
+95, in run_migrations_online
+    asyncio.run(run_async_mig
+rations())
+  File "C:\Users\georg\AppDat
+a\Local\Programs\Python\Pytho
+n312\Lib\asyncio\runners.py",
+ line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\georg\AppDat
+a\Local\Programs\Python\Pytho
+n312\Lib\asyncio\runners.py",
+ line 118, in run
+    return self._loop.run_unt
+il_complete(task)
+           ^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^
+  File "C:\Users\georg\AppDat
+a\Local\Programs\Python\Pytho
+n312\Lib\asyncio\base_events.
+py", line 685, in 
+run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\georg\kin\ba
+ckend\alembic\env.py", line 
+87, in run_async_migrations
+    await connection.run_sync
+(do_run_migrations)
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\ext\asyncio\engine
+.py", line 888, in run_sync
+    return await 
+greenlet_spawn(
+           
+^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\util\_concurrency_
+py3k.py", line 201, in 
+greenlet_spawn
+    result = context.throw(*s
+ys.exc_info())
+             ^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^
+  File "C:\Users\georg\kin\ba
+ckend\alembic\env.py", line 
+70, in do_run_migrations
+    context.run_migrations()
+  File "<string>", line 8, 
+in run_migrations
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+alembic\runtime\environment.p
+y", line 969, in 
+run_migrations
+    self.get_context().run_mi
+grations(**kw)
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+alembic\runtime\migration.py"
+, line 626, in run_migrations
+    step.migration_fn(**kw)
+  File "C:\Users\georg\kin\ba
+ckend\alembic\versions\c1d50c
+f6d6ef_allow_null_pairing_tok
+en_created_by.py", line 24, 
+in upgrade
+    op.drop_table('spatial_re
+f_sys')
+  File "<string>", line 8, 
+in drop_table
+  File "<string>", line 3, 
+in drop_table
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+alembic\operations\ops.py", 
+line 1435, in drop_table
+    operations.invoke(op)
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+alembic\operations\base.py", 
+line 452, in invoke
+    return fn(self, 
+operation)
+           
+^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+alembic\operations\toimpl.py"
+, line 90, in drop_table
+    
+operations.impl.drop_table(
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+alembic\ddl\impl.py", line 
+465, in drop_table
+    self._exec(schema.DropTab
+le(table, **kw))
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+alembic\ddl\impl.py", line 
+256, in _exec
+    return 
+conn.execute(construct, 
+params)
+           ^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\engine\base.py", 
+line 1419, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\sql\ddl.py", line 
+187, in 
+_execute_on_connection
+    return 
+connection._execute_ddl(
+           
+^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\engine\base.py", 
+line 1530, in _execute_ddl
+    ret = 
+self._execute_context(
+          
+^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\engine\base.py", 
+line 1846, in 
+_execute_context
+    return 
+self._exec_single_context(
+           
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\engine\base.py", 
+line 1986, in 
+_exec_single_context
+    
+self._handle_dbapi_exception(
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\engine\base.py", 
+line 2363, in 
+_handle_dbapi_exception
+    raise sqlalchemy_exceptio
+n.with_traceback(exc_info[2])
+ from e
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\engine\base.py", 
+line 1967, in 
+_exec_single_context
+    self.dialect.do_execute(
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\engine\default.py"
+, line 952, in do_execute
+    
+cursor.execute(statement, 
+parameters)
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\dialects\postgresq
+l\asyncpg.py", line 585, in 
+execute
+    self._adapt_connection.aw
+ait_(
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\util\_concurrency_
+py3k.py", line 132, in 
+await_only
+    return current.parent.swi
+tch(awaitable)  # type: ignor
+e[no-any-return,attr-defined]
+ # noqa: E501
+           ^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\util\_concurrency_
+py3k.py", line 196, in 
+greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\dialects\postgresq
+l\asyncpg.py", line 563, in 
+_prepare_and_execute
+    
+self._handle_exception(error)
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\dialects\postgresq
+l\asyncpg.py", line 513, in 
+_handle_exception
+    self._adapt_connection._h
+andle_exception(error)
+  File "C:\Users\georg\kin\ba
+ckend\venv\Lib\site-packages\
+sqlalchemy\dialects\postgresq
+l\asyncpg.py", line 797, in 
+_handle_exception
+    raise translated_error 
+from error
+sqlalchemy.exc.DBAPIError: (s
+qlalchemy.dialects.postgresql
+.asyncpg.Error) <class 'async
+pg.exceptions.DependentObject
+sStillExistError'>: cannot 
+drop table spatial_ref_sys 
+because extension postgis 
+requires it
+HINT:  You can drop 
+extension postgis instead.
+[SQL: 
+DROP TABLE spatial_ref_sys]
+(Background on this error 
+at: https://sqlalche.me/e/20/
+dbapi)

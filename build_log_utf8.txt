@@ -1,0 +1,665 @@
+﻿---- REMOTE BUILD OUTPUT -----
+starting build "28cbfd22-0e56-4efd-98af-d6df41e85304"
+FETCHSOURCE
+Fetching storage object: gs://quantsight-prod_cloudbuild/source/1772745370.168642-a92024f9734d44a1a58a3fb26a46bc2c.tgz#1772745371108586
+Copying gs://quantsight-prod_cloudbuild/source/1772745370.168642-a92024f9734d44a1a58a3fb26a46bc2c.tgz#1772745371108586...
+/ [0 files][    0.0 B/199.5 KiB]                                                
+/ [1 files][199.5 KiB/199.5 KiB]
+Operation completed over 1 objects/199.5 KiB.
+BUILD
+Starting Step #0 - "build-and-push"
+Step #0 - "build-and-push": Already have image (with digest): gcr.io/cloud-builders/docker
+Step #0 - "build-and-push": Sending build context to Docker daemon  447.5kB
+Step #0 - "build-and-push": Step 1/17 : FROM python:3.12-slim AS builder
+Step #0 - "build-and-push": 3.12-slim: Pulling from library/python
+Step #0 - "build-and-push": 206356c42440: Already exists
+Step #0 - "build-and-push": 30dad65d3b24: Pulling fs layer
+Step #0 - "build-and-push": 5d7ccc6599a6: Pulling fs layer
+Step #0 - "build-and-push": b9aab63c297c: Pulling fs layer
+Step #0 - "build-and-push": 30dad65d3b24: Verifying Checksum
+Step #0 - "build-and-push": 30dad65d3b24: Download complete
+Step #0 - "build-and-push": b9aab63c297c: Verifying Checksum
+Step #0 - "build-and-push": b9aab63c297c: Download complete
+Step #0 - "build-and-push": 30dad65d3b24: Pull complete
+Step #0 - "build-and-push": 5d7ccc6599a6: Verifying Checksum
+Step #0 - "build-and-push": 5d7ccc6599a6: Download complete
+Step #0 - "build-and-push": 5d7ccc6599a6: Pull complete
+Step #0 - "build-and-push": b9aab63c297c: Pull complete
+Step #0 - "build-and-push": Digest: sha256:ccc7089399c8bb65dd1fb3ed6d55efa538a3f5e7fca3f5988ac3b5b87e593bf0
+Step #0 - "build-and-push": Status: Downloaded newer image for python:3.12-slim
+Step #0 - "build-and-push":  ---> 6f90d4a79e7a
+Step #0 - "build-and-push": Step 2/17 : RUN apt-get update && apt-get install -y --no-install-recommends     gcc     libpq-dev     && rm -rf /var/lib/apt/lists/*
+Step #0 - "build-and-push":  ---> Running in d668b227b813
+Step #0 - "build-and-push": Hit:1 http://deb.debian.org/debian trixie InRelease
+Step #0 - "build-and-push": Get:2 http://deb.debian.org/debian trixie-updates InRelease [47.3 kB]
+Step #0 - "build-and-push": Get:3 http://deb.debian.org/debian-security trixie-security InRelease [43.4 kB]
+Step #0 - "build-and-push": Get:4 http://deb.debian.org/debian trixie/main amd64 Packages [9670 kB]
+Step #0 - "build-and-push": Get:5 http://deb.debian.org/debian trixie-updates/main amd64 Packages [5412 B]
+Step #0 - "build-and-push": Get:6 http://deb.debian.org/debian-security trixie-security/main amd64 Packages [108 kB]
+Step #0 - "build-and-push": Fetched 9875 kB in 1s (10.4 MB/s)
+Step #0 - "build-and-push": Reading package lists...
+Step #0 - "build-and-push": Reading package lists...
+Step #0 - "build-and-push": Building dependency tree...
+Step #0 - "build-and-push": Reading state information...
+Step #0 - "build-and-push": The following additional packages will be installed:
+Step #0 - "build-and-push":   binutils binutils-common binutils-x86-64-linux-gnu cpp cpp-14
+Step #0 - "build-and-push":   cpp-14-x86-64-linux-gnu cpp-x86-64-linux-gnu gcc-14 gcc-14-x86-64-linux-gnu
+Step #0 - "build-and-push":   gcc-x86-64-linux-gnu libasan8 libatomic1 libbinutils libcc1-0 libcom-err2
+Step #0 - "build-and-push":   libctf-nobfd0 libctf0 libgcc-14-dev libgomp1 libgprofng0 libgssapi-krb5-2
+Step #0 - "build-and-push":   libhwasan0 libisl23 libitm1 libjansson4 libk5crypto3 libkeyutils1 libkrb5-3
+Step #0 - "build-and-push":   libkrb5support0 libldap2 liblsan0 libmpc3 libmpfr6 libpq5 libquadmath0
+Step #0 - "build-and-push":   libsasl2-2 libsasl2-modules-db libsframe1 libssl-dev libtsan2 libubsan1
+Step #0 - "build-and-push": Suggested packages:
+Step #0 - "build-and-push":   binutils-doc gprofng-gui binutils-gold cpp-doc gcc-14-locales cpp-14-doc
+Step #0 - "build-and-push":   gcc-multilib make manpages-dev autoconf automake libtool flex bison gdb
+Step #0 - "build-and-push":   gcc-doc gcc-14-multilib gcc-14-doc gdb-x86-64-linux-gnu krb5-doc krb5-user
+Step #0 - "build-and-push":   postgresql-doc-17 libssl-doc
+Step #0 - "build-and-push": Recommended packages:
+Step #0 - "build-and-push":   libc6-dev | libc-dev libc6-dev libc-dev krb5-locales libldap-common
+Step #0 - "build-and-push":   libsasl2-modules
+Step #0 - "build-and-push": The following NEW packages will be installed:
+Step #0 - "build-and-push":   binutils binutils-common binutils-x86-64-linux-gnu cpp cpp-14
+Step #0 - "build-and-push":   cpp-14-x86-64-linux-gnu cpp-x86-64-linux-gnu gcc gcc-14
+Step #0 - "build-and-push":   gcc-14-x86-64-linux-gnu gcc-x86-64-linux-gnu libasan8 libatomic1 libbinutils
+Step #0 - "build-and-push":   libcc1-0 libcom-err2 libctf-nobfd0 libctf0 libgcc-14-dev libgomp1
+Step #0 - "build-and-push":   libgprofng0 libgssapi-krb5-2 libhwasan0 libisl23 libitm1 libjansson4
+Step #0 - "build-and-push":   libk5crypto3 libkeyutils1 libkrb5-3 libkrb5support0 libldap2 liblsan0
+Step #0 - "build-and-push":   libmpc3 libmpfr6 libpq-dev libpq5 libquadmath0 libsasl2-2
+Step #0 - "build-and-push":   libsasl2-modules-db libsframe1 libssl-dev libtsan2 libubsan1
+Step #0 - "build-and-push": 0 upgraded, 43 newly installed, 0 to remove and 0 not upgraded.
+Step #0 - "build-and-push": Need to get 56.1 MB of archives.
+Step #0 - "build-and-push": After this operation, 213 MB of additional disk space will be used.
+Step #0 - "build-and-push": Get:1 http://deb.debian.org/debian trixie/main amd64 libsframe1 amd64 2.44-3 [78.4 kB]
+Step #0 - "build-and-push": Get:2 http://deb.debian.org/debian trixie/main amd64 binutils-common amd64 2.44-3 [2509 kB]
+Step #0 - "build-and-push": Get:3 http://deb.debian.org/debian trixie/main amd64 libbinutils amd64 2.44-3 [534 kB]
+Step #0 - "build-and-push": Get:4 http://deb.debian.org/debian trixie/main amd64 libgprofng0 amd64 2.44-3 [808 kB]
+Step #0 - "build-and-push": Get:5 http://deb.debian.org/debian trixie/main amd64 libctf-nobfd0 amd64 2.44-3 [156 kB]
+Step #0 - "build-and-push": Get:6 http://deb.debian.org/debian trixie/main amd64 libctf0 amd64 2.44-3 [88.6 kB]
+Step #0 - "build-and-push": Get:7 http://deb.debian.org/debian trixie/main amd64 libjansson4 amd64 2.14-2+b3 [39.8 kB]
+Step #0 - "build-and-push": Get:8 http://deb.debian.org/debian trixie/main amd64 binutils-x86-64-linux-gnu amd64 2.44-3 [1014 kB]
+Step #0 - "build-and-push": Get:9 http://deb.debian.org/debian trixie/main amd64 binutils amd64 2.44-3 [265 kB]
+Step #0 - "build-and-push": Get:10 http://deb.debian.org/debian trixie/main amd64 libisl23 amd64 0.27-1 [659 kB]
+Step #0 - "build-and-push": Get:11 http://deb.debian.org/debian trixie/main amd64 libmpfr6 amd64 4.2.2-1 [729 kB]
+Step #0 - "build-and-push": Get:12 http://deb.debian.org/debian trixie/main amd64 libmpc3 amd64 1.3.1-1+b3 [52.2 kB]
+Step #0 - "build-and-push": Get:13 http://deb.debian.org/debian trixie/main amd64 cpp-14-x86-64-linux-gnu amd64 14.2.0-19 [11.0 MB]
+Step #0 - "build-and-push": Get:14 http://deb.debian.org/debian trixie/main amd64 cpp-14 amd64 14.2.0-19 [1280 B]
+Step #0 - "build-and-push": Get:15 http://deb.debian.org/debian trixie/main amd64 cpp-x86-64-linux-gnu amd64 4:14.2.0-1 [4840 B]
+Step #0 - "build-and-push": Get:16 http://deb.debian.org/debian trixie/main amd64 cpp amd64 4:14.2.0-1 [1568 B]
+Step #0 - "build-and-push": Get:17 http://deb.debian.org/debian trixie/main amd64 libcc1-0 amd64 14.2.0-19 [42.8 kB]
+Step #0 - "build-and-push": Get:18 http://deb.debian.org/debian trixie/main amd64 libgomp1 amd64 14.2.0-19 [137 kB]
+Step #0 - "build-and-push": Get:19 http://deb.debian.org/debian trixie/main amd64 libitm1 amd64 14.2.0-19 [26.0 kB]
+Step #0 - "build-and-push": Get:20 http://deb.debian.org/debian trixie/main amd64 libatomic1 amd64 14.2.0-19 [9308 B]
+Step #0 - "build-and-push": Get:21 http://deb.debian.org/debian trixie/main amd64 libasan8 amd64 14.2.0-19 [2725 kB]
+Step #0 - "build-and-push": Get:22 http://deb.debian.org/debian trixie/main amd64 liblsan0 amd64 14.2.0-19 [1204 kB]
+Step #0 - "build-and-push": Get:23 http://deb.debian.org/debian trixie/main amd64 libtsan2 amd64 14.2.0-19 [2460 kB]
+Step #0 - "build-and-push": Get:24 http://deb.debian.org/debian trixie/main amd64 libubsan1 amd64 14.2.0-19 [1074 kB]
+Step #0 - "build-and-push": Get:25 http://deb.debian.org/debian trixie/main amd64 libhwasan0 amd64 14.2.0-19 [1488 kB]
+Step #0 - "build-and-push": Get:26 http://deb.debian.org/debian trixie/main amd64 libquadmath0 amd64 14.2.0-19 [145 kB]
+Step #0 - "build-and-push": Get:27 http://deb.debian.org/debian trixie/main amd64 libgcc-14-dev amd64 14.2.0-19 [2672 kB]
+Step #0 - "build-and-push": Get:28 http://deb.debian.org/debian trixie/main amd64 gcc-14-x86-64-linux-gnu amd64 14.2.0-19 [21.4 MB]
+Step #0 - "build-and-push": Get:29 http://deb.debian.org/debian trixie/main amd64 gcc-14 amd64 14.2.0-19 [540 kB]
+Step #0 - "build-and-push": Get:30 http://deb.debian.org/debian trixie/main amd64 gcc-x86-64-linux-gnu amd64 4:14.2.0-1 [1436 B]
+Step #0 - "build-and-push": Get:31 http://deb.debian.org/debian trixie/main amd64 gcc amd64 4:14.2.0-1 [5136 B]
+Step #0 - "build-and-push": Get:32 http://deb.debian.org/debian trixie/main amd64 libcom-err2 amd64 1.47.2-3+b7 [25.0 kB]
+Step #0 - "build-and-push": Get:33 http://deb.debian.org/debian trixie/main amd64 libkrb5support0 amd64 1.21.3-5 [33.0 kB]
+Step #0 - "build-and-push": Get:34 http://deb.debian.org/debian trixie/main amd64 libk5crypto3 amd64 1.21.3-5 [81.5 kB]
+Step #0 - "build-and-push": Get:35 http://deb.debian.org/debian trixie/main amd64 libkeyutils1 amd64 1.6.3-6 [9456 B]
+Step #0 - "build-and-push": Get:36 http://deb.debian.org/debian trixie/main amd64 libkrb5-3 amd64 1.21.3-5 [326 kB]
+Step #0 - "build-and-push": Get:37 http://deb.debian.org/debian trixie/main amd64 libgssapi-krb5-2 amd64 1.21.3-5 [138 kB]
+Step #0 - "build-and-push": Get:38 http://deb.debian.org/debian trixie/main amd64 libsasl2-modules-db amd64 2.1.28+dfsg1-9 [19.8 kB]
+Step #0 - "build-and-push": Get:39 http://deb.debian.org/debian trixie/main amd64 libsasl2-2 amd64 2.1.28+dfsg1-9 [57.5 kB]
+Step #0 - "build-and-push": Get:40 http://deb.debian.org/debian trixie/main amd64 libldap2 amd64 2.6.10+dfsg-1 [194 kB]
+Step #0 - "build-and-push": Get:41 http://deb.debian.org/debian-security trixie-security/main amd64 libpq5 amd64 17.8-0+deb13u1 [228 kB]
+Step #0 - "build-and-push": Get:42 http://deb.debian.org/debian-security trixie-security/main amd64 libssl-dev amd64 3.5.4-1~deb13u2 [2958 kB]
+Step #0 - "build-and-push": Get:43 http://deb.debian.org/debian-security trixie-security/main amd64 libpq-dev amd64 17.8-0+deb13u1 [152 kB]
+Step #0 - "build-and-push": [91mdebconf: unable to initialize frontend: Dialog
+Step #0 - "build-and-push": debconf: (TERM is not set, so the dialog frontend is not usable.)
+Step #0 - "build-and-push": debconf: falling back to frontend: Readline
+Step #0 - "build-and-push": [0m[91mdebconf: unable to initialize frontend: Readline
+Step #0 - "build-and-push": debconf: (Can't locate Term/ReadLine.pm in @INC (you may need to install the Term::ReadLine module) (@INC entries checked: /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.40.1 /usr/local/share/perl/5.40.1 /usr/lib/x86_64-linux-gnu/perl5/5.40 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base /usr/lib/x86_64-linux-gnu/perl/5.40 /usr/share/perl/5.40 /usr/local/lib/site_perl) at /usr/share/perl5/Debconf/FrontEnd/Readline.pm line 8, <STDIN> line 43.)
+Step #0 - "build-and-push": debconf: falling back to frontend: Teletype
+Step #0 - "build-and-push": [0m[91mdebconf: unable to initialize frontend: Teletype
+Step #0 - "build-and-push": debconf: (This frontend requires a controlling tty.)
+Step #0 - "build-and-push": debconf: falling back to frontend: Noninteractive
+Step #0 - "build-and-push": [0mFetched 56.1 MB in 0s (132 MB/s)
+Step #0 - "build-and-push": Selecting previously unselected package libsframe1:amd64.
+Step #0 - "build-and-push": (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 5645 files and directories currently installed.)
+Step #0 - "build-and-push": Preparing to unpack .../00-libsframe1_2.44-3_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libsframe1:amd64 (2.44-3) ...
+Step #0 - "build-and-push": Selecting previously unselected package binutils-common:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../01-binutils-common_2.44-3_amd64.deb ...
+Step #0 - "build-and-push": Unpacking binutils-common:amd64 (2.44-3) ...
+Step #0 - "build-and-push": Selecting previously unselected package libbinutils:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../02-libbinutils_2.44-3_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libbinutils:amd64 (2.44-3) ...
+Step #0 - "build-and-push": Selecting previously unselected package libgprofng0:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../03-libgprofng0_2.44-3_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libgprofng0:amd64 (2.44-3) ...
+Step #0 - "build-and-push": Selecting previously unselected package libctf-nobfd0:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../04-libctf-nobfd0_2.44-3_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libctf-nobfd0:amd64 (2.44-3) ...
+Step #0 - "build-and-push": Selecting previously unselected package libctf0:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../05-libctf0_2.44-3_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libctf0:amd64 (2.44-3) ...
+Step #0 - "build-and-push": Selecting previously unselected package libjansson4:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../06-libjansson4_2.14-2+b3_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libjansson4:amd64 (2.14-2+b3) ...
+Step #0 - "build-and-push": Selecting previously unselected package binutils-x86-64-linux-gnu.
+Step #0 - "build-and-push": Preparing to unpack .../07-binutils-x86-64-linux-gnu_2.44-3_amd64.deb ...
+Step #0 - "build-and-push": Unpacking binutils-x86-64-linux-gnu (2.44-3) ...
+Step #0 - "build-and-push": Selecting previously unselected package binutils.
+Step #0 - "build-and-push": Preparing to unpack .../08-binutils_2.44-3_amd64.deb ...
+Step #0 - "build-and-push": Unpacking binutils (2.44-3) ...
+Step #0 - "build-and-push": Selecting previously unselected package libisl23:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../09-libisl23_0.27-1_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libisl23:amd64 (0.27-1) ...
+Step #0 - "build-and-push": Selecting previously unselected package libmpfr6:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../10-libmpfr6_4.2.2-1_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libmpfr6:amd64 (4.2.2-1) ...
+Step #0 - "build-and-push": Selecting previously unselected package libmpc3:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../11-libmpc3_1.3.1-1+b3_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libmpc3:amd64 (1.3.1-1+b3) ...
+Step #0 - "build-and-push": Selecting previously unselected package cpp-14-x86-64-linux-gnu.
+Step #0 - "build-and-push": Preparing to unpack .../12-cpp-14-x86-64-linux-gnu_14.2.0-19_amd64.deb ...
+Step #0 - "build-and-push": Unpacking cpp-14-x86-64-linux-gnu (14.2.0-19) ...
+Step #0 - "build-and-push": Selecting previously unselected package cpp-14.
+Step #0 - "build-and-push": Preparing to unpack .../13-cpp-14_14.2.0-19_amd64.deb ...
+Step #0 - "build-and-push": Unpacking cpp-14 (14.2.0-19) ...
+Step #0 - "build-and-push": Selecting previously unselected package cpp-x86-64-linux-gnu.
+Step #0 - "build-and-push": Preparing to unpack .../14-cpp-x86-64-linux-gnu_4%3a14.2.0-1_amd64.deb ...
+Step #0 - "build-and-push": Unpacking cpp-x86-64-linux-gnu (4:14.2.0-1) ...
+Step #0 - "build-and-push": Selecting previously unselected package cpp.
+Step #0 - "build-and-push": Preparing to unpack .../15-cpp_4%3a14.2.0-1_amd64.deb ...
+Step #0 - "build-and-push": Unpacking cpp (4:14.2.0-1) ...
+Step #0 - "build-and-push": Selecting previously unselected package libcc1-0:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../16-libcc1-0_14.2.0-19_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libcc1-0:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Selecting previously unselected package libgomp1:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../17-libgomp1_14.2.0-19_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libgomp1:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Selecting previously unselected package libitm1:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../18-libitm1_14.2.0-19_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libitm1:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Selecting previously unselected package libatomic1:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../19-libatomic1_14.2.0-19_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libatomic1:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Selecting previously unselected package libasan8:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../20-libasan8_14.2.0-19_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libasan8:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Selecting previously unselected package liblsan0:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../21-liblsan0_14.2.0-19_amd64.deb ...
+Step #0 - "build-and-push": Unpacking liblsan0:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Selecting previously unselected package libtsan2:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../22-libtsan2_14.2.0-19_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libtsan2:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Selecting previously unselected package libubsan1:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../23-libubsan1_14.2.0-19_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libubsan1:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Selecting previously unselected package libhwasan0:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../24-libhwasan0_14.2.0-19_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libhwasan0:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Selecting previously unselected package libquadmath0:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../25-libquadmath0_14.2.0-19_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libquadmath0:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Selecting previously unselected package libgcc-14-dev:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../26-libgcc-14-dev_14.2.0-19_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libgcc-14-dev:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Selecting previously unselected package gcc-14-x86-64-linux-gnu.
+Step #0 - "build-and-push": Preparing to unpack .../27-gcc-14-x86-64-linux-gnu_14.2.0-19_amd64.deb ...
+Step #0 - "build-and-push": Unpacking gcc-14-x86-64-linux-gnu (14.2.0-19) ...
+Step #0 - "build-and-push": Selecting previously unselected package gcc-14.
+Step #0 - "build-and-push": Preparing to unpack .../28-gcc-14_14.2.0-19_amd64.deb ...
+Step #0 - "build-and-push": Unpacking gcc-14 (14.2.0-19) ...
+Step #0 - "build-and-push": Selecting previously unselected package gcc-x86-64-linux-gnu.
+Step #0 - "build-and-push": Preparing to unpack .../29-gcc-x86-64-linux-gnu_4%3a14.2.0-1_amd64.deb ...
+Step #0 - "build-and-push": Unpacking gcc-x86-64-linux-gnu (4:14.2.0-1) ...
+Step #0 - "build-and-push": Selecting previously unselected package gcc.
+Step #0 - "build-and-push": Preparing to unpack .../30-gcc_4%3a14.2.0-1_amd64.deb ...
+Step #0 - "build-and-push": Unpacking gcc (4:14.2.0-1) ...
+Step #0 - "build-and-push": Selecting previously unselected package libcom-err2:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../31-libcom-err2_1.47.2-3+b7_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libcom-err2:amd64 (1.47.2-3+b7) ...
+Step #0 - "build-and-push": Selecting previously unselected package libkrb5support0:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../32-libkrb5support0_1.21.3-5_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libkrb5support0:amd64 (1.21.3-5) ...
+Step #0 - "build-and-push": Selecting previously unselected package libk5crypto3:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../33-libk5crypto3_1.21.3-5_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libk5crypto3:amd64 (1.21.3-5) ...
+Step #0 - "build-and-push": Selecting previously unselected package libkeyutils1:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../34-libkeyutils1_1.6.3-6_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libkeyutils1:amd64 (1.6.3-6) ...
+Step #0 - "build-and-push": Selecting previously unselected package libkrb5-3:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../35-libkrb5-3_1.21.3-5_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libkrb5-3:amd64 (1.21.3-5) ...
+Step #0 - "build-and-push": Selecting previously unselected package libgssapi-krb5-2:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../36-libgssapi-krb5-2_1.21.3-5_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libgssapi-krb5-2:amd64 (1.21.3-5) ...
+Step #0 - "build-and-push": Selecting previously unselected package libsasl2-modules-db:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../37-libsasl2-modules-db_2.1.28+dfsg1-9_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libsasl2-modules-db:amd64 (2.1.28+dfsg1-9) ...
+Step #0 - "build-and-push": Selecting previously unselected package libsasl2-2:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../38-libsasl2-2_2.1.28+dfsg1-9_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libsasl2-2:amd64 (2.1.28+dfsg1-9) ...
+Step #0 - "build-and-push": Selecting previously unselected package libldap2:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../39-libldap2_2.6.10+dfsg-1_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libldap2:amd64 (2.6.10+dfsg-1) ...
+Step #0 - "build-and-push": Selecting previously unselected package libpq5:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../40-libpq5_17.8-0+deb13u1_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libpq5:amd64 (17.8-0+deb13u1) ...
+Step #0 - "build-and-push": Selecting previously unselected package libssl-dev:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../41-libssl-dev_3.5.4-1~deb13u2_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libssl-dev:amd64 (3.5.4-1~deb13u2) ...
+Step #0 - "build-and-push": Selecting previously unselected package libpq-dev.
+Step #0 - "build-and-push": Preparing to unpack .../42-libpq-dev_17.8-0+deb13u1_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libpq-dev (17.8-0+deb13u1) ...
+Step #0 - "build-and-push": Setting up libkeyutils1:amd64 (1.6.3-6) ...
+Step #0 - "build-and-push": Setting up binutils-common:amd64 (2.44-3) ...
+Step #0 - "build-and-push": Setting up libctf-nobfd0:amd64 (2.44-3) ...
+Step #0 - "build-and-push": Setting up libcom-err2:amd64 (1.47.2-3+b7) ...
+Step #0 - "build-and-push": Setting up libgomp1:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Setting up libsframe1:amd64 (2.44-3) ...
+Step #0 - "build-and-push": Setting up libjansson4:amd64 (2.14-2+b3) ...
+Step #0 - "build-and-push": Setting up libkrb5support0:amd64 (1.21.3-5) ...
+Step #0 - "build-and-push": Setting up libsasl2-modules-db:amd64 (2.1.28+dfsg1-9) ...
+Step #0 - "build-and-push": Setting up libmpfr6:amd64 (4.2.2-1) ...
+Step #0 - "build-and-push": Setting up libquadmath0:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Setting up libssl-dev:amd64 (3.5.4-1~deb13u2) ...
+Step #0 - "build-and-push": Setting up libmpc3:amd64 (1.3.1-1+b3) ...
+Step #0 - "build-and-push": Setting up libatomic1:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Setting up libk5crypto3:amd64 (1.21.3-5) ...
+Step #0 - "build-and-push": Setting up libsasl2-2:amd64 (2.1.28+dfsg1-9) ...
+Step #0 - "build-and-push": Setting up libubsan1:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Setting up libhwasan0:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Setting up libasan8:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Setting up libkrb5-3:amd64 (1.21.3-5) ...
+Step #0 - "build-and-push": Setting up libtsan2:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Setting up libbinutils:amd64 (2.44-3) ...
+Step #0 - "build-and-push": Setting up libisl23:amd64 (0.27-1) ...
+Step #0 - "build-and-push": Setting up libcc1-0:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Setting up libldap2:amd64 (2.6.10+dfsg-1) ...
+Step #0 - "build-and-push": Setting up liblsan0:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Setting up libitm1:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Setting up libctf0:amd64 (2.44-3) ...
+Step #0 - "build-and-push": Setting up libgprofng0:amd64 (2.44-3) ...
+Step #0 - "build-and-push": Setting up libgssapi-krb5-2:amd64 (1.21.3-5) ...
+Step #0 - "build-and-push": Setting up cpp-14-x86-64-linux-gnu (14.2.0-19) ...
+Step #0 - "build-and-push": Setting up cpp-14 (14.2.0-19) ...
+Step #0 - "build-and-push": Setting up libgcc-14-dev:amd64 (14.2.0-19) ...
+Step #0 - "build-and-push": Setting up binutils-x86-64-linux-gnu (2.44-3) ...
+Step #0 - "build-and-push": Setting up cpp-x86-64-linux-gnu (4:14.2.0-1) ...
+Step #0 - "build-and-push": Setting up libpq5:amd64 (17.8-0+deb13u1) ...
+Step #0 - "build-and-push": Setting up libpq-dev (17.8-0+deb13u1) ...
+Step #0 - "build-and-push": Setting up binutils (2.44-3) ...
+Step #0 - "build-and-push": Setting up cpp (4:14.2.0-1) ...
+Step #0 - "build-and-push": Setting up gcc-14-x86-64-linux-gnu (14.2.0-19) ...
+Step #0 - "build-and-push": Setting up gcc-x86-64-linux-gnu (4:14.2.0-1) ...
+Step #0 - "build-and-push": Setting up gcc-14 (14.2.0-19) ...
+Step #0 - "build-and-push": Setting up gcc (4:14.2.0-1) ...
+Step #0 - "build-and-push": Processing triggers for libc-bin (2.41-12+deb13u1) ...
+Step #0 - "build-and-push": Removing intermediate container d668b227b813
+Step #0 - "build-and-push":  ---> 578f118ee7c0
+Step #0 - "build-and-push": Step 3/17 : WORKDIR /build
+Step #0 - "build-and-push":  ---> Running in da1cb33b58a6
+Step #0 - "build-and-push": Removing intermediate container da1cb33b58a6
+Step #0 - "build-and-push":  ---> a3df5c7a6b84
+Step #0 - "build-and-push": Step 4/17 : COPY requirements.txt .
+Step #0 - "build-and-push":  ---> 61d79a923785
+Step #0 - "build-and-push": Step 5/17 : RUN python -m venv /opt/venv     && /opt/venv/bin/pip install --upgrade pip     && /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
+Step #0 - "build-and-push":  ---> Running in 232aecd41d69
+Step #0 - "build-and-push": Requirement already satisfied: pip in /opt/venv/lib/python3.12/site-packages (25.0.1)
+Step #0 - "build-and-push": Collecting pip
+Step #0 - "build-and-push":   Downloading pip-26.0.1-py3-none-any.whl.metadata (4.7 kB)
+Step #0 - "build-and-push": Downloading pip-26.0.1-py3-none-any.whl (1.8 MB)
+Step #0 - "build-and-push":    ???????????????????????????????????????? 1.8/1.8 MB 36.8 MB/s eta 0:00:00
+Step #0 - "build-and-push": Installing collected packages: pip
+Step #0 - "build-and-push":   Attempting uninstall: pip
+Step #0 - "build-and-push":     Found existing installation: pip 25.0.1
+Step #0 - "build-and-push":     Uninstalling pip-25.0.1:
+Step #0 - "build-and-push":       Successfully uninstalled pip-25.0.1
+Step #0 - "build-and-push": Successfully installed pip-26.0.1
+Step #0 - "build-and-push": Collecting fastapi==0.104.1 (from -r requirements.txt (line 1))
+Step #0 - "build-and-push":   Downloading fastapi-0.104.1-py3-none-any.whl.metadata (24 kB)
+Step #0 - "build-and-push": Collecting uvicorn==0.24.0 (from -r requirements.txt (line 2))
+Step #0 - "build-and-push":   Downloading uvicorn-0.24.0-py3-none-any.whl.metadata (6.4 kB)
+Step #0 - "build-and-push": Collecting pydantic==2.5.2 (from -r requirements.txt (line 3))
+Step #0 - "build-and-push":   Downloading pydantic-2.5.2-py3-none-any.whl.metadata (65 kB)
+Step #0 - "build-and-push": Collecting paho-mqtt==1.6.1 (from -r requirements.txt (line 4))
+Step #0 - "build-and-push":   Downloading paho-mqtt-1.6.1.tar.gz (99 kB)
+Step #0 - "build-and-push":   Installing build dependencies: started
+Step #0 - "build-and-push":   Installing build dependencies: finished with status 'done'
+Step #0 - "build-and-push":   Getting requirements to build wheel: started
+Step #0 - "build-and-push":   Getting requirements to build wheel: finished with status 'done'
+Step #0 - "build-and-push":   Preparing metadata (pyproject.toml): started
+Step #0 - "build-and-push":   Preparing metadata (pyproject.toml): finished with status 'done'
+Step #0 - "build-and-push": Collecting aiohttp==3.9.3 (from -r requirements.txt (line 5))
+Step #0 - "build-and-push":   Downloading aiohttp-3.9.3-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (7.4 kB)
+Step #0 - "build-and-push": Collecting websockets==12.0 (from -r requirements.txt (line 6))
+Step #0 - "build-and-push":   Downloading websockets-12.0-cp312-cp312-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.6 kB)
+Step #0 - "build-and-push": Collecting geoalchemy2 (from -r requirements.txt (line 7))
+Step #0 - "build-and-push":   Downloading geoalchemy2-0.18.4-py3-none-any.whl.metadata (2.1 kB)
+Step #0 - "build-and-push": Collecting asyncpg (from -r requirements.txt (line 8))
+Step #0 - "build-and-push":   Downloading asyncpg-0.31.0-cp312-cp312-manylinux_2_28_x86_64.whl.metadata (4.4 kB)
+Step #0 - "build-and-push": Collecting python-multipart (from -r requirements.txt (line 10))
+Step #0 - "build-and-push":   Downloading python_multipart-0.0.22-py3-none-any.whl.metadata (1.8 kB)
+Step #0 - "build-and-push": Collecting apscheduler==3.11.2 (from -r requirements.txt (line 13))
+Step #0 - "build-and-push":   Downloading apscheduler-3.11.2-py3-none-any.whl.metadata (6.4 kB)
+Step #0 - "build-and-push": Collecting sqlalchemy[asyncio] (from -r requirements.txt (line 9))
+Step #0 - "build-and-push":   Downloading sqlalchemy-2.0.48-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (9.5 kB)
+Step #0 - "build-and-push": Collecting python-jose[cryptography] (from -r requirements.txt (line 11))
+Step #0 - "build-and-push":   Downloading python_jose-3.5.0-py2.py3-none-any.whl.metadata (5.5 kB)
+Step #0 - "build-and-push": Collecting passlib[bcrypt] (from -r requirements.txt (line 12))
+Step #0 - "build-and-push":   Downloading passlib-1.7.4-py2.py3-none-any.whl.metadata (1.7 kB)
+Step #0 - "build-and-push": Collecting anyio<4.0.0,>=3.7.1 (from fastapi==0.104.1->-r requirements.txt (line 1))
+Step #0 - "build-and-push":   Downloading anyio-3.7.1-py3-none-any.whl.metadata (4.7 kB)
+Step #0 - "build-and-push": Collecting starlette<0.28.0,>=0.27.0 (from fastapi==0.104.1->-r requirements.txt (line 1))
+Step #0 - "build-and-push":   Downloading starlette-0.27.0-py3-none-any.whl.metadata (5.8 kB)
+Step #0 - "build-and-push": Collecting typing-extensions>=4.8.0 (from fastapi==0.104.1->-r requirements.txt (line 1))
+Step #0 - "build-and-push":   Downloading typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+Step #0 - "build-and-push": Collecting annotated-types>=0.4.0 (from pydantic==2.5.2->-r requirements.txt (line 3))
+Step #0 - "build-and-push":   Downloading annotated_types-0.7.0-py3-none-any.whl.metadata (15 kB)
+Step #0 - "build-and-push": Collecting pydantic-core==2.14.5 (from pydantic==2.5.2->-r requirements.txt (line 3))
+Step #0 - "build-and-push":   Downloading pydantic_core-2.14.5-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.5 kB)
+Step #0 - "build-and-push": Collecting click>=7.0 (from uvicorn==0.24.0->-r requirements.txt (line 2))
+Step #0 - "build-and-push":   Downloading click-8.3.1-py3-none-any.whl.metadata (2.6 kB)
+Step #0 - "build-and-push": Collecting h11>=0.8 (from uvicorn==0.24.0->-r requirements.txt (line 2))
+Step #0 - "build-and-push":   Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+Step #0 - "build-and-push": Collecting aiosignal>=1.1.2 (from aiohttp==3.9.3->-r requirements.txt (line 5))
+Step #0 - "build-and-push":   Downloading aiosignal-1.4.0-py3-none-any.whl.metadata (3.7 kB)
+Step #0 - "build-and-push": Collecting attrs>=17.3.0 (from aiohttp==3.9.3->-r requirements.txt (line 5))
+Step #0 - "build-and-push":   Downloading attrs-25.4.0-py3-none-any.whl.metadata (10 kB)
+Step #0 - "build-and-push": Collecting frozenlist>=1.1.1 (from aiohttp==3.9.3->-r requirements.txt (line 5))
+Step #0 - "build-and-push":   Downloading frozenlist-1.8.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (20 kB)
+Step #0 - "build-and-push": Collecting multidict<7.0,>=4.5 (from aiohttp==3.9.3->-r requirements.txt (line 5))
+Step #0 - "build-and-push":   Downloading multidict-6.7.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (5.3 kB)
+Step #0 - "build-and-push": Collecting yarl<2.0,>=1.0 (from aiohttp==3.9.3->-r requirements.txt (line 5))
+Step #0 - "build-and-push":   Downloading yarl-1.23.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (79 kB)
+Step #0 - "build-and-push": Collecting tzlocal>=3.0 (from apscheduler==3.11.2->-r requirements.txt (line 13))
+Step #0 - "build-and-push":   Downloading tzlocal-5.3.1-py3-none-any.whl.metadata (7.6 kB)
+Step #0 - "build-and-push": Collecting idna>=2.8 (from anyio<4.0.0,>=3.7.1->fastapi==0.104.1->-r requirements.txt (line 1))
+Step #0 - "build-and-push":   Downloading idna-3.11-py3-none-any.whl.metadata (8.4 kB)
+Step #0 - "build-and-push": Collecting sniffio>=1.1 (from anyio<4.0.0,>=3.7.1->fastapi==0.104.1->-r requirements.txt (line 1))
+Step #0 - "build-and-push":   Downloading sniffio-1.3.1-py3-none-any.whl.metadata (3.9 kB)
+Step #0 - "build-and-push": Collecting propcache>=0.2.1 (from yarl<2.0,>=1.0->aiohttp==3.9.3->-r requirements.txt (line 5))
+Step #0 - "build-and-push":   Downloading propcache-0.4.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (13 kB)
+Step #0 - "build-and-push": Collecting packaging (from geoalchemy2->-r requirements.txt (line 7))
+Step #0 - "build-and-push":   Downloading packaging-26.0-py3-none-any.whl.metadata (3.3 kB)
+Step #0 - "build-and-push": Collecting greenlet>=1 (from sqlalchemy[asyncio]->-r requirements.txt (line 9))
+Step #0 - "build-and-push":   Downloading greenlet-3.3.2-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl.metadata (3.7 kB)
+Step #0 - "build-and-push": Collecting ecdsa!=0.15 (from python-jose[cryptography]->-r requirements.txt (line 11))
+Step #0 - "build-and-push":   Downloading ecdsa-0.19.1-py2.py3-none-any.whl.metadata (29 kB)
+Step #0 - "build-and-push": Collecting rsa!=4.1.1,!=4.4,<5.0,>=4.0 (from python-jose[cryptography]->-r requirements.txt (line 11))
+Step #0 - "build-and-push":   Downloading rsa-4.9.1-py3-none-any.whl.metadata (5.6 kB)
+Step #0 - "build-and-push": Collecting pyasn1>=0.5.0 (from python-jose[cryptography]->-r requirements.txt (line 11))
+Step #0 - "build-and-push":   Downloading pyasn1-0.6.2-py3-none-any.whl.metadata (8.4 kB)
+Step #0 - "build-and-push": Collecting cryptography>=3.4.0 (from python-jose[cryptography]->-r requirements.txt (line 11))
+Step #0 - "build-and-push":   Downloading cryptography-46.0.5-cp311-abi3-manylinux_2_34_x86_64.whl.metadata (5.7 kB)
+Step #0 - "build-and-push": Collecting bcrypt>=3.1.0 (from passlib[bcrypt]->-r requirements.txt (line 12))
+Step #0 - "build-and-push":   Downloading bcrypt-5.0.0-cp39-abi3-manylinux_2_34_x86_64.whl.metadata (10 kB)
+Step #0 - "build-and-push": Collecting cffi>=2.0.0 (from cryptography>=3.4.0->python-jose[cryptography]->-r requirements.txt (line 11))
+Step #0 - "build-and-push":   Downloading cffi-2.0.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.6 kB)
+Step #0 - "build-and-push": Collecting pycparser (from cffi>=2.0.0->cryptography>=3.4.0->python-jose[cryptography]->-r requirements.txt (line 11))
+Step #0 - "build-and-push":   Downloading pycparser-3.0-py3-none-any.whl.metadata (8.2 kB)
+Step #0 - "build-and-push": Collecting six>=1.9.0 (from ecdsa!=0.15->python-jose[cryptography]->-r requirements.txt (line 11))
+Step #0 - "build-and-push":   Downloading six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+Step #0 - "build-and-push": Downloading fastapi-0.104.1-py3-none-any.whl (92 kB)
+Step #0 - "build-and-push": Downloading pydantic-2.5.2-py3-none-any.whl (381 kB)
+Step #0 - "build-and-push": Downloading uvicorn-0.24.0-py3-none-any.whl (59 kB)
+Step #0 - "build-and-push": Downloading aiohttp-3.9.3-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (1.3 MB)
+Step #0 - "build-and-push":    ???????????????????????????????????????? 1.3/1.3 MB 72.2 MB/s  0:00:00
+Step #0 - "build-and-push": Downloading websockets-12.0-cp312-cp312-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl (131 kB)
+Step #0 - "build-and-push": Downloading apscheduler-3.11.2-py3-none-any.whl (64 kB)
+Step #0 - "build-and-push": Downloading pydantic_core-2.14.5-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.1 MB)
+Step #0 - "build-and-push":    ???????????????????????????????????????? 2.1/2.1 MB 149.0 MB/s  0:00:00
+Step #0 - "build-and-push": Downloading anyio-3.7.1-py3-none-any.whl (80 kB)
+Step #0 - "build-and-push": Downloading multidict-6.7.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (256 kB)
+Step #0 - "build-and-push": Downloading starlette-0.27.0-py3-none-any.whl (66 kB)
+Step #0 - "build-and-push": Downloading yarl-1.23.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (100 kB)
+Step #0 - "build-and-push": Downloading geoalchemy2-0.18.4-py3-none-any.whl (81 kB)
+Step #0 - "build-and-push": Downloading asyncpg-0.31.0-cp312-cp312-manylinux_2_28_x86_64.whl (3.5 MB)
+Step #0 - "build-and-push":    ???????????????????????????????????????? 3.5/3.5 MB 170.5 MB/s  0:00:00
+Step #0 - "build-and-push": Downloading sqlalchemy-2.0.48-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (3.3 MB)
+Step #0 - "build-and-push":    ???????????????????????????????????????? 3.3/3.3 MB 249.9 MB/s  0:00:00
+Step #0 - "build-and-push": Downloading python_multipart-0.0.22-py3-none-any.whl (24 kB)
+Step #0 - "build-and-push": Downloading python_jose-3.5.0-py2.py3-none-any.whl (34 kB)
+Step #0 - "build-and-push": Downloading rsa-4.9.1-py3-none-any.whl (34 kB)
+Step #0 - "build-and-push": Downloading passlib-1.7.4-py2.py3-none-any.whl (525 kB)
+Step #0 - "build-and-push":    ???????????????????????????????????????? 525.6/525.6 kB 516.9 MB/s  0:00:00
+Step #0 - "build-and-push": Downloading aiosignal-1.4.0-py3-none-any.whl (7.5 kB)
+Step #0 - "build-and-push": Downloading annotated_types-0.7.0-py3-none-any.whl (13 kB)
+Step #0 - "build-and-push": Downloading attrs-25.4.0-py3-none-any.whl (67 kB)
+Step #0 - "build-and-push": Downloading bcrypt-5.0.0-cp39-abi3-manylinux_2_34_x86_64.whl (278 kB)
+Step #0 - "build-and-push": Downloading click-8.3.1-py3-none-any.whl (108 kB)
+Step #0 - "build-and-push": Downloading cryptography-46.0.5-cp311-abi3-manylinux_2_34_x86_64.whl (4.5 MB)
+Step #0 - "build-and-push":    ???????????????????????????????????????? 4.5/4.5 MB 283.1 MB/s  0:00:00
+Step #0 - "build-and-push": Downloading cffi-2.0.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (219 kB)
+Step #0 - "build-and-push": Downloading ecdsa-0.19.1-py2.py3-none-any.whl (150 kB)
+Step #0 - "build-and-push": Downloading frozenlist-1.8.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (242 kB)
+Step #0 - "build-and-push": Downloading greenlet-3.3.2-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (613 kB)
+Step #0 - "build-and-push":    ???????????????????????????????????????? 613.9/613.9 kB 504.7 MB/s  0:00:00
+Step #0 - "build-and-push": Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+Step #0 - "build-and-push": Downloading idna-3.11-py3-none-any.whl (71 kB)
+Step #0 - "build-and-push": Downloading propcache-0.4.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (221 kB)
+Step #0 - "build-and-push": Downloading pyasn1-0.6.2-py3-none-any.whl (83 kB)
+Step #0 - "build-and-push": Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+Step #0 - "build-and-push": Downloading sniffio-1.3.1-py3-none-any.whl (10 kB)
+Step #0 - "build-and-push": Downloading typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+Step #0 - "build-and-push": Downloading tzlocal-5.3.1-py3-none-any.whl (18 kB)
+Step #0 - "build-and-push": Downloading packaging-26.0-py3-none-any.whl (74 kB)
+Step #0 - "build-and-push": Downloading pycparser-3.0-py3-none-any.whl (48 kB)
+Step #0 - "build-and-push": Building wheels for collected packages: paho-mqtt
+Step #0 - "build-and-push":   Building wheel for paho-mqtt (pyproject.toml): started
+Step #0 - "build-and-push":   Building wheel for paho-mqtt (pyproject.toml): finished with status 'done'
+Step #0 - "build-and-push":   Created wheel for paho-mqtt: filename=paho_mqtt-1.6.1-py3-none-any.whl size=62199 sha256=9d355c27c6a5fb4bd5272ceb0541f8410520fab863db50c042389a258fecd870
+Step #0 - "build-and-push":   Stored in directory: /tmp/pip-ephem-wheel-cache-sn242381/wheels/23/d5/af/1f3cbcc350dec9d8e95040f388e0163d132eff0c9a453db659
+Step #0 - "build-and-push": Successfully built paho-mqtt
+Step #0 - "build-and-push": Installing collected packages: passlib, paho-mqtt, websockets, tzlocal, typing-extensions, sniffio, six, python-multipart, pycparser, pyasn1, propcache, packaging, multidict, idna, h11, greenlet, frozenlist, click, bcrypt, attrs, asyncpg, annotated-types, yarl, uvicorn, sqlalchemy, rsa, pydantic-core, ecdsa, cffi, apscheduler, anyio, aiosignal, starlette, python-jose, pydantic, geoalchemy2, cryptography, aiohttp, fastapi
+Step #0 - "build-and-push":
+Step #0 - "build-and-push": Successfully installed aiohttp-3.9.3 aiosignal-1.4.0 annotated-types-0.7.0 anyio-3.7.1 apscheduler-3.11.2 asyncpg-0.31.0 attrs-25.4.0 bcrypt-5.0.0 cffi-2.0.0 click-8.3.1 cryptography-46.0.5 ecdsa-0.19.1 fastapi-0.104.1 frozenlist-1.8.0 geoalchemy2-0.18.4 greenlet-3.3.2 h11-0.16.0 idna-3.11 multidict-6.7.1 packaging-26.0 paho-mqtt-1.6.1 passlib-1.7.4 propcache-0.4.1 pyasn1-0.6.2 pycparser-3.0 pydantic-2.5.2 pydantic-core-2.14.5 python-jose-3.5.0 python-multipart-0.0.22 rsa-4.9.1 six-1.17.0 sniffio-1.3.1 sqlalchemy-2.0.48 starlette-0.27.0 typing-extensions-4.15.0 tzlocal-5.3.1 uvicorn-0.24.0 websockets-12.0 yarl-1.23.0
+Step #0 - "build-and-push": Removing intermediate container 232aecd41d69
+Step #0 - "build-and-push":  ---> 043a9c7af537
+Step #0 - "build-and-push": Step 6/17 : FROM python:3.12-slim AS runtime
+Step #0 - "build-and-push":  ---> 6f90d4a79e7a
+Step #0 - "build-and-push": Step 7/17 : RUN apt-get update && apt-get install -y --no-install-recommends     libpq5     && rm -rf /var/lib/apt/lists/*
+Step #0 - "build-and-push":  ---> Running in c19db79ae69b
+Step #0 - "build-and-push": Hit:1 http://deb.debian.org/debian trixie InRelease
+Step #0 - "build-and-push": Get:2 http://deb.debian.org/debian trixie-updates InRelease [47.3 kB]
+Step #0 - "build-and-push": Get:3 http://deb.debian.org/debian-security trixie-security InRelease [43.4 kB]
+Step #0 - "build-and-push": Get:4 http://deb.debian.org/debian trixie/main amd64 Packages [9670 kB]
+Step #0 - "build-and-push": Get:5 http://deb.debian.org/debian trixie-updates/main amd64 Packages [5412 B]
+Step #0 - "build-and-push": Get:6 http://deb.debian.org/debian-security trixie-security/main amd64 Packages [108 kB]
+Step #0 - "build-and-push": Fetched 9875 kB in 1s (11.6 MB/s)
+Step #0 - "build-and-push": Reading package lists...
+Step #0 - "build-and-push": Reading package lists...
+Step #0 - "build-and-push": Building dependency tree...
+Step #0 - "build-and-push": Reading state information...
+Step #0 - "build-and-push": The following additional packages will be installed:
+Step #0 - "build-and-push":   libcom-err2 libgssapi-krb5-2 libk5crypto3 libkeyutils1 libkrb5-3
+Step #0 - "build-and-push":   libkrb5support0 libldap2 libsasl2-2 libsasl2-modules-db
+Step #0 - "build-and-push": Suggested packages:
+Step #0 - "build-and-push":   krb5-doc krb5-user
+Step #0 - "build-and-push": Recommended packages:
+Step #0 - "build-and-push":   krb5-locales libldap-common libsasl2-modules
+Step #0 - "build-and-push": The following NEW packages will be installed:
+Step #0 - "build-and-push":   libcom-err2 libgssapi-krb5-2 libk5crypto3 libkeyutils1 libkrb5-3
+Step #0 - "build-and-push":   libkrb5support0 libldap2 libpq5 libsasl2-2 libsasl2-modules-db
+Step #0 - "build-and-push": 0 upgraded, 10 newly installed, 0 to remove and 0 not upgraded.
+Step #0 - "build-and-push": Need to get 1112 kB of archives.
+Step #0 - "build-and-push": After this operation, 3992 kB of additional disk space will be used.
+Step #0 - "build-and-push": Get:1 http://deb.debian.org/debian trixie/main amd64 libcom-err2 amd64 1.47.2-3+b7 [25.0 kB]
+Step #0 - "build-and-push": Get:2 http://deb.debian.org/debian trixie/main amd64 libkrb5support0 amd64 1.21.3-5 [33.0 kB]
+Step #0 - "build-and-push": Get:3 http://deb.debian.org/debian trixie/main amd64 libk5crypto3 amd64 1.21.3-5 [81.5 kB]
+Step #0 - "build-and-push": Get:4 http://deb.debian.org/debian trixie/main amd64 libkeyutils1 amd64 1.6.3-6 [9456 B]
+Step #0 - "build-and-push": Get:5 http://deb.debian.org/debian trixie/main amd64 libkrb5-3 amd64 1.21.3-5 [326 kB]
+Step #0 - "build-and-push": Get:6 http://deb.debian.org/debian trixie/main amd64 libgssapi-krb5-2 amd64 1.21.3-5 [138 kB]
+Step #0 - "build-and-push": Get:7 http://deb.debian.org/debian trixie/main amd64 libsasl2-modules-db amd64 2.1.28+dfsg1-9 [19.8 kB]
+Step #0 - "build-and-push": Get:8 http://deb.debian.org/debian trixie/main amd64 libsasl2-2 amd64 2.1.28+dfsg1-9 [57.5 kB]
+Step #0 - "build-and-push": Get:9 http://deb.debian.org/debian trixie/main amd64 libldap2 amd64 2.6.10+dfsg-1 [194 kB]
+Step #0 - "build-and-push": Get:10 http://deb.debian.org/debian-security trixie-security/main amd64 libpq5 amd64 17.8-0+deb13u1 [228 kB]
+Step #0 - "build-and-push": [91mdebconf: unable to initialize frontend: Dialog
+Step #0 - "build-and-push": debconf: (TERM is not set, so the dialog frontend is not usable.)
+Step #0 - "build-and-push": debconf: falling back to frontend: Readline
+Step #0 - "build-and-push": [0m[91mdebconf: unable to initialize frontend: Readline
+Step #0 - "build-and-push": debconf: (Can't locate Term/ReadLine.pm in @INC (you may need to install the Term::ReadLine module) (@INC entries checked: /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.40.1 /usr/local/share/perl/5.40.1 /usr/lib/x86_64-linux-gnu/perl5/5.40 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base /usr/lib/x86_64-linux-gnu/perl/5.40 /usr/share/perl/5.40 /usr/local/lib/site_perl) at /usr/share/perl5/Debconf/FrontEnd/Readline.pm line 8, <STDIN> line 10.)
+Step #0 - "build-and-push": debconf: falling back to frontend: Teletype
+Step #0 - "build-and-push": [0m[91mdebconf: unable to initialize frontend: Teletype
+Step #0 - "build-and-push": debconf: (This frontend requires a controlling tty.)
+Step #0 - "build-and-push": debconf: falling back to frontend: Noninteractive
+Step #0 - "build-and-push": [0mFetched 1112 kB in 0s (10.6 MB/s)
+Step #0 - "build-and-push": Selecting previously unselected package libcom-err2:amd64.
+Step #0 - "build-and-push": (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 5645 files and directories currently installed.)
+Step #0 - "build-and-push": Preparing to unpack .../0-libcom-err2_1.47.2-3+b7_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libcom-err2:amd64 (1.47.2-3+b7) ...
+Step #0 - "build-and-push": Selecting previously unselected package libkrb5support0:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../1-libkrb5support0_1.21.3-5_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libkrb5support0:amd64 (1.21.3-5) ...
+Step #0 - "build-and-push": Selecting previously unselected package libk5crypto3:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../2-libk5crypto3_1.21.3-5_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libk5crypto3:amd64 (1.21.3-5) ...
+Step #0 - "build-and-push": Selecting previously unselected package libkeyutils1:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../3-libkeyutils1_1.6.3-6_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libkeyutils1:amd64 (1.6.3-6) ...
+Step #0 - "build-and-push": Selecting previously unselected package libkrb5-3:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../4-libkrb5-3_1.21.3-5_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libkrb5-3:amd64 (1.21.3-5) ...
+Step #0 - "build-and-push": Selecting previously unselected package libgssapi-krb5-2:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../5-libgssapi-krb5-2_1.21.3-5_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libgssapi-krb5-2:amd64 (1.21.3-5) ...
+Step #0 - "build-and-push": Selecting previously unselected package libsasl2-modules-db:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../6-libsasl2-modules-db_2.1.28+dfsg1-9_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libsasl2-modules-db:amd64 (2.1.28+dfsg1-9) ...
+Step #0 - "build-and-push": Selecting previously unselected package libsasl2-2:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../7-libsasl2-2_2.1.28+dfsg1-9_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libsasl2-2:amd64 (2.1.28+dfsg1-9) ...
+Step #0 - "build-and-push": Selecting previously unselected package libldap2:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../8-libldap2_2.6.10+dfsg-1_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libldap2:amd64 (2.6.10+dfsg-1) ...
+Step #0 - "build-and-push": Selecting previously unselected package libpq5:amd64.
+Step #0 - "build-and-push": Preparing to unpack .../9-libpq5_17.8-0+deb13u1_amd64.deb ...
+Step #0 - "build-and-push": Unpacking libpq5:amd64 (17.8-0+deb13u1) ...
+Step #0 - "build-and-push": Setting up libkeyutils1:amd64 (1.6.3-6) ...
+Step #0 - "build-and-push": Setting up libcom-err2:amd64 (1.47.2-3+b7) ...
+Step #0 - "build-and-push": Setting up libkrb5support0:amd64 (1.21.3-5) ...
+Step #0 - "build-and-push": Setting up libsasl2-modules-db:amd64 (2.1.28+dfsg1-9) ...
+Step #0 - "build-and-push": Setting up libk5crypto3:amd64 (1.21.3-5) ...
+Step #0 - "build-and-push": Setting up libsasl2-2:amd64 (2.1.28+dfsg1-9) ...
+Step #0 - "build-and-push": Setting up libkrb5-3:amd64 (1.21.3-5) ...
+Step #0 - "build-and-push": Setting up libldap2:amd64 (2.6.10+dfsg-1) ...
+Step #0 - "build-and-push": Setting up libgssapi-krb5-2:amd64 (1.21.3-5) ...
+Step #0 - "build-and-push": Setting up libpq5:amd64 (17.8-0+deb13u1) ...
+Step #0 - "build-and-push": Processing triggers for libc-bin (2.41-12+deb13u1) ...
+Step #0 - "build-and-push": Removing intermediate container c19db79ae69b
+Step #0 - "build-and-push":  ---> beb2f36cf357
+Step #0 - "build-and-push": Step 8/17 : COPY --from=builder /opt/venv /opt/venv
+Step #0 - "build-and-push":  ---> dee04e156d3a
+Step #0 - "build-and-push": Step 9/17 : ENV PATH="/opt/venv/bin:$PATH"
+Step #0 - "build-and-push":  ---> Running in f53cacbf1b12
+Step #0 - "build-and-push": Removing intermediate container f53cacbf1b12
+Step #0 - "build-and-push":  ---> 6bb2e3bb96ff
+Step #0 - "build-and-push": Step 10/17 : WORKDIR /app
+Step #0 - "build-and-push":  ---> Running in 60db202d1f37
+Step #0 - "build-and-push": Removing intermediate container 60db202d1f37
+Step #0 - "build-and-push":  ---> 6f32a266ac16
+Step #0 - "build-and-push": Step 11/17 : COPY app/ ./app/
+Step #0 - "build-and-push":  ---> 0d392fd1e034
+Step #0 - "build-and-push": Step 12/17 : COPY alembic/ ./alembic/
+Step #0 - "build-and-push":  ---> e74b414be6c0
+Step #0 - "build-and-push": Step 13/17 : COPY alembic.ini .
+Step #0 - "build-and-push":  ---> 3b73845b2384
+Step #0 - "build-and-push": Step 14/17 : RUN useradd --no-create-home --shell /bin/false appuser
+Step #0 - "build-and-push":  ---> Running in e0b3fb79efdb
+Step #0 - "build-and-push": Removing intermediate container e0b3fb79efdb
+Step #0 - "build-and-push":  ---> 4c60d713f203
+Step #0 - "build-and-push": Step 15/17 : USER appuser
+Step #0 - "build-and-push":  ---> Running in 2844b74a8f38
+Step #0 - "build-and-push": Removing intermediate container 2844b74a8f38
+Step #0 - "build-and-push":  ---> 0ae00f03bc2f
+Step #0 - "build-and-push": Step 16/17 : EXPOSE 8080
+Step #0 - "build-and-push":  ---> Running in 05d4cd89424b
+Step #0 - "build-and-push": Removing intermediate container 05d4cd89424b
+Step #0 - "build-and-push":  ---> 74096c5ab53f
+Step #0 - "build-and-push": Step 17/17 : CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1"]
+Step #0 - "build-and-push":  ---> Running in 71afd81d5c2a
+Step #0 - "build-and-push": Removing intermediate container 71afd81d5c2a
+Step #0 - "build-and-push":  ---> 7af90c2a417e
+Step #0 - "build-and-push": Successfully built 7af90c2a417e
+Step #0 - "build-and-push": Successfully tagged us-central1-docker.pkg.dev/kin-tracker/kin/kin-api:initial
+Step #0 - "build-and-push": Successfully tagged us-central1-docker.pkg.dev/kin-tracker/kin/kin-api:latest
+Finished Step #0 - "build-and-push"
+Starting Step #1 - "push-sha"
+Starting Step #2 - "push-latest"
+Step #1 - "push-sha": Already have image (with digest): gcr.io/cloud-builders/docker
+Step #2 - "push-latest": Already have image (with digest): gcr.io/cloud-builders/docker
+Step #1 - "push-sha": The push refers to repository [us-central1-docker.pkg.dev/kin-tracker/kin/kin-api]
+Step #1 - "push-sha": 7fc7749f9025: Preparing
+Step #1 - "push-sha": 9ef6529a3294: Preparing
+Step #1 - "push-sha": 53b5399e232c: Preparing
+Step #1 - "push-sha": 672335228c42: Preparing
+Step #1 - "push-sha": 57d694d07f10: Preparing
+Step #1 - "push-sha": a23102b8ca08: Preparing
+Step #1 - "push-sha": 047e04883292: Preparing
+Step #1 - "push-sha": 789d614e27ab: Preparing
+Step #1 - "push-sha": c2cad67c34c6: Preparing
+Step #1 - "push-sha": 7a589dab7d18: Preparing
+Step #1 - "push-sha": a257f20c716c: Preparing
+Step #1 - "push-sha": a257f20c716c: Waiting
+Step #2 - "push-latest": The push refers to repository [us-central1-docker.pkg.dev/kin-tracker/kin/kin-api]
+Step #2 - "push-latest": 7fc7749f9025: Preparing
+Step #2 - "push-latest": 9ef6529a3294: Preparing
+Step #2 - "push-latest": 53b5399e232c: Preparing
+Step #2 - "push-latest": 672335228c42: Preparing
+Step #2 - "push-latest": 57d694d07f10: Preparing
+Step #2 - "push-latest": a23102b8ca08: Preparing
+Step #2 - "push-latest": 047e04883292: Preparing
+Step #2 - "push-latest": 789d614e27ab: Preparing
+Step #2 - "push-latest": c2cad67c34c6: Preparing
+Step #2 - "push-latest": 7a589dab7d18: Preparing
+Step #2 - "push-latest": a257f20c716c: Preparing
+Step #2 - "push-latest": a257f20c716c: Waiting
+Step #2 - "push-latest": denied: Permission 'artifactregistry.repositories.uploadArtifacts' denied on resource (or it may not exist).
+Step #1 - "push-sha": denied: Permission 'artifactregistry.repositories.uploadArtifacts' denied on resource (or it may not exist).
+Finished Step #2 - "push-latest"
+ERROR
+ERROR: build step 2 "gcr.io/cloud-builders/docker" failed: step exited with non-zero status: 1
+------------------------------
