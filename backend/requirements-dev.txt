@@ -1,0 +1,6 @@
+# Dev/test extras — not installed in the Docker image
+-r requirements.txt
+pytest==7.4.3
+pytest-asyncio==0.23.8
+httpx==0.25.2
+aiosqlite

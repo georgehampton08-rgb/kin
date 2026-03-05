@@ -1,0 +1,87 @@
+services:
+
+  # ── PostgreSQL 15 + PostGIS 3 ───────────────────────────────────────────────
+  kin-db:
+    image: postgis/postgis:15-3.4
+    container_name: kin-db
+    environment:
+      POSTGRES_USER: kinuser
+      POSTGRES_PASSWORD: kinpass
+      POSTGRES_DB: kindb
+    volumes:
+      - kin-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U kinuser -d kindb" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+    networks:
+      - kin-net
+
+  # ── EMQX 5.3.0 MQTT Broker ──────────────────────────────────────────────────
+  kin-broker:
+    image: emqx/emqx:5.3.0
+    container_name: kin-broker
+    environment:
+      EMQX_NAME: kin-broker
+      EMQX_HOST: kin-broker
+    ports:
+      - "1883:1883" # MQTT
+      - "18083:18083" # EMQX Web Console
+    healthcheck:
+      test: [ "CMD", "emqx", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - kin-net
+
+  # ── FastAPI Backend ─────────────────────────────────────────────────────────
+  kin-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kin-api
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://kinuser:kinpass@kin-db:5432/kindb
+      MQTT_BROKER: kin-broker
+      MQTT_PORT: "1883"
+      ENVIRONMENT: development
+      ALLOWED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
+      APP_VERSION: local
+    depends_on:
+      kin-db:
+        condition: service_healthy
+      kin-broker:
+        condition: service_healthy
+    ports:
+      - "8000:8080"
+    networks:
+      - kin-net
+
+  # ── React / Vite Dashboard ──────────────────────────────────────────────────
+  kin-dashboard:
+    image: node:20-slim
+    container_name: kin-dashboard
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev -- --host"
+    environment:
+      VITE_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    networks:
+      - kin-net
+
+networks:
+  kin-net:
+    driver: bridge
+
+volumes:
+  kin-pgdata:

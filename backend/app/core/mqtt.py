@@ -1,6 +1,7 @@
 import json
 import logging
 import asyncio
+import os
 import paho.mqtt.client as mqtt
 from app.db.session import AsyncSessionLocal
 from app.models.location import CurrentStatus, LocationHistory
@@ -11,8 +12,9 @@ from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
 
-MQTT_BROKER = "localhost"
-MQTT_PORT = 1883
+MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
+MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
+MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", "")
 MQTT_TOPIC = "kin/telemetry/+"
 
 # Store the global event loop reference
@@ -132,9 +134,11 @@ class MQTTListener:
         global _main_loop
         _main_loop = asyncio.get_running_loop()
         try:
+            if MQTT_PASSWORD:
+                self.client.username_pw_set(username="kin", password=MQTT_PASSWORD)
             self.client.connect(MQTT_BROKER, MQTT_PORT, 60)
             self.client.loop_start()
-            logger.info("MQTT Listener started in background.")
+            logger.info(f"MQTT Listener connected to {MQTT_BROKER}:{MQTT_PORT}")
         except Exception as e:
             logger.error(f"Could not connect to MQTT broker: {e}")
             

@@ -1,0 +1,45 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+.tox/
+.nox/
+dist/
+build/
+*.egg
+
+# Tests & dev tooling
+tests/
+test_*.py
+pytest.ini
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# Secrets — never in the image
+.env
+*.env
+
+# Editor artifacts
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local data files
+osrm-data/
+*.pbf
+*.osm
+*.osm.pbf
+seed_*.py
+download_osm_data.py
+
+# Git
+.git/
+.gitignore

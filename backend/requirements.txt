@@ -1,14 +1,12 @@
 fastapi==0.104.1
 uvicorn==0.24.0
 pydantic==2.5.2
-pytest==7.4.3
-pytest-asyncio==0.23.8
-httpx==0.25.2
 paho-mqtt==1.6.1
 aiohttp==3.9.3
 websockets==12.0
 geoalchemy2
 asyncpg
+sqlalchemy[asyncio]
 python-multipart
 python-jose[cryptography]
 passlib[bcrypt]

@@ -58,10 +58,17 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
+    # Acquire a Postgres advisory lock to prevent concurrent migrations
+    # from two Cloud Run instances corrupting the alembic_version table.
+    # Lock ID 1573946 is arbitrary but stable — change only if collision detected.
+    from sqlalchemy import text as sa_text
+    connection.execute(sa_text("SELECT pg_advisory_xact_lock(1573946)"))
+
     context.configure(connection=connection, target_metadata=target_metadata)
 
     with context.begin_transaction():
         context.run_migrations()
+
 
 
 async def run_async_migrations() -> None:

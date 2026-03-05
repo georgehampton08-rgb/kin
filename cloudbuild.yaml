@@ -1,0 +1,164 @@
+steps:
+  # ────────────────────────────────────────────────────────────────────────────
+  # Stage 1: Run tests
+  # ────────────────────────────────────────────────────────────────────────────
+  - name: "python:3.12-slim"
+    id: "test"
+    dir: "backend"
+    entrypoint: bash
+    args:
+      - "-c"
+      - |
+        pip install --quiet -r requirements.txt -r requirements-dev.txt
+        pytest tests/ -v --tb=short
+    env:
+      - "DATABASE_URL=sqlite+aiosqlite:///./test.db"
+      - "MQTT_BROKER=localhost"
+      - "MQTT_PORT=1883"
+      - "MQTT_PASSWORD="
+      - "JWT_SECRET=ci-test-secret"
+      - "ENCRYPTION_KEY=ci-test-enc-key"
+      - "ENVIRONMENT=test"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Stage 2: Build & push Docker image to Artifact Registry
+  # ────────────────────────────────────────────────────────────────────────────
+  - name: "gcr.io/cloud-builders/docker"
+    id: "build-and-push"
+    args:
+      - "build"
+      - "-t"
+      - "us-central1-docker.pkg.dev/$PROJECT_ID/kin/kin-api:$SHORT_SHA"
+      - "-t"
+      - "us-central1-docker.pkg.dev/$PROJECT_ID/kin/kin-api:latest"
+      - "backend/"
+    waitFor: ["test"]
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push-sha"
+    args:
+      - "push"
+      - "us-central1-docker.pkg.dev/$PROJECT_ID/kin/kin-api:$SHORT_SHA"
+    waitFor: ["build-and-push"]
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push-latest"
+    args:
+      - "push"
+      - "us-central1-docker.pkg.dev/$PROJECT_ID/kin/kin-api:latest"
+    waitFor: ["build-and-push"]
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Stage 3: Run Alembic migrations via Cloud SQL Auth Proxy sidecar
+  # ────────────────────────────────────────────────────────────────────────────
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: "migrate"
+    entrypoint: bash
+    args:
+      - "-c"
+      - |
+        # Download Cloud SQL Auth Proxy v2
+        curl -o /workspace/cloud-sql-proxy \
+          https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.9.0/cloud-sql-proxy.linux.amd64
+        chmod +x /workspace/cloud-sql-proxy
+
+        # Start proxy in background (Unix socket mode)
+        /workspace/cloud-sql-proxy \
+          --unix-socket=/workspace/cloudsql \
+          kin-tracker:us-central1:kin-db &
+        PROXY_PID=$!
+
+        # Wait for socket to appear
+        for i in $(seq 1 30); do
+          [ -S "/workspace/cloudsql/kin-tracker:us-central1:kin-db" ] && break
+          sleep 1
+        done
+
+        # Install deps and run migrations
+        pip install --quiet asyncpg alembic sqlalchemy geoalchemy2 aiosqlite
+        cd backend
+        DATABASE_URL="postgresql+asyncpg://kinuser:$(gcloud secrets versions access latest --secret=kin-db-url | python3 -c 'import sys; url=sys.stdin.read().strip(); print(url.split(\"kinuser:\")[1].split(\"@\")[0])')@/kindb?host=/workspace/cloudsql/kin-tracker:us-central1:kin-db" \
+          alembic upgrade head
+
+        kill $PROXY_PID
+    waitFor: ["push-sha", "push-latest"]
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Stage 4: Deploy new revision with --no-traffic (canary)
+  # ────────────────────────────────────────────────────────────────────────────
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: "deploy-canary"
+    args:
+      - "run"
+      - "deploy"
+      - "kin-api"
+      - "--image=us-central1-docker.pkg.dev/$PROJECT_ID/kin/kin-api:$SHORT_SHA"
+      - "--region=us-central1"
+      - "--platform=managed"
+      - "--no-traffic"
+      - "--min-instances=1"
+      - "--max-instances=5"
+      - "--port=8080"
+      - "--cpu=1"
+      - "--memory=512Mi"
+      - "--concurrency=80"
+      - "--allow-unauthenticated"
+      - "--add-cloudsql-instances=kin-tracker:us-central1:kin-db"
+      - "--set-secrets=DATABASE_URL=kin-db-url:latest,MQTT_PASSWORD=kin-mqtt-password:latest,JWT_SECRET=kin-jwt-secret:latest,ENCRYPTION_KEY=kin-encryption-key:latest"
+      - "--set-env-vars=MQTT_BROKER=kin-broker,MQTT_PORT=1883,ENVIRONMENT=production,APP_VERSION=$SHORT_SHA"
+    waitFor: ["migrate"]
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Stage 5: Health-check the canary revision
+  # ────────────────────────────────────────────────────────────────────────────
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: "health-check"
+    entrypoint: bash
+    args:
+      - "-c"
+      - |
+        CANARY_URL=$(gcloud run revisions list \
+          --service=kin-api \
+          --region=us-central1 \
+          --format="value(status.url)" \
+          --limit=1)
+
+        echo "Checking health at: $CANARY_URL/health"
+
+        for i in $(seq 1 12); do
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$CANARY_URL/health")
+          echo "Attempt $i: HTTP $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "Health check passed!"
+            exit 0
+          fi
+          sleep 10
+        done
+
+        echo "Health check FAILED after 2 minutes"
+        exit 1
+    waitFor: ["deploy-canary"]
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Stage 6: Promote to 100% traffic
+  # ────────────────────────────────────────────────────────────────────────────
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: "promote"
+    args:
+      - "run"
+      - "services"
+      - "update-traffic"
+      - "kin-api"
+      - "--region=us-central1"
+      - "--to-latest"
+    waitFor: ["health-check"]
+
+images:
+  - "us-central1-docker.pkg.dev/$PROJECT_ID/kin/kin-api:$SHORT_SHA"
+  - "us-central1-docker.pkg.dev/$PROJECT_ID/kin/kin-api:latest"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: "E2_HIGHCPU_8"
+
+timeout: "1200s"
