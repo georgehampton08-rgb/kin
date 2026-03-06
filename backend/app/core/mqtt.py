@@ -3,12 +3,15 @@ import logging
 import asyncio
 import os
 import paho.mqtt.client as mqtt
+from pydantic import ValidationError
+
 from app.db.session import AsyncSessionLocal
-from app.models.location import CurrentStatus, LocationHistory
+from app.models.location import CurrentStatus, LocationHistory, Device
+from app.schemas.location import LocationUpdate
 from app.core.geofencing import check_geofences
 from app.core.ws_manager import ws_manager
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy import func
+from sqlalchemy import func, select
 
 logger = logging.getLogger(__name__)
 
@@ -16,19 +19,60 @@ MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", "")
 MQTT_TOPIC = "kin/telemetry/+"
+MQTT_MAX_PAYLOAD_BYTES = 65536  # 64 KB
 
 # Store the global event loop reference
 _main_loop = None
 
+
+def _validate_device_id(device_id: str) -> bool:
+    """Validate device_id is a plausible identifier (non-empty, bounded length)."""
+    if not device_id or len(device_id) > 255:
+        return False
+    # Reject obviously malicious patterns
+    if any(c in device_id for c in ("'", '"', ";", "--", "/*")):
+        return False
+    return True
+
+
+async def _device_exists(device_id: str) -> bool:
+    """Check if device_id exists in the devices table."""
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(Device).where(Device.device_identifier == device_id)
+        )
+        return result.scalar_one_or_none() is not None
+
+
 async def process_telemetry(payload: dict, device_id: str):
-    lat = payload.get("latitude")
-    lon = payload.get("longitude")
-    alt = payload.get("altitude")
-    speed = payload.get("speed")
-    battery = payload.get("battery_level")
-    
-    if lat is None or lon is None:
-        logger.warning(f"Invalid payload for {device_id}: missing lat/lon")
+    # Validate device_id
+    if not _validate_device_id(device_id):
+        logger.warning(f"MQTT: Invalid device_id format: {device_id[:50]}")
+        return
+
+    # Validate payload using the same Pydantic model as REST endpoints
+    try:
+        validated = LocationUpdate(
+            latitude=payload.get("latitude"),
+            longitude=payload.get("longitude"),
+            altitude=payload.get("altitude"),
+            speed=payload.get("speed"),
+            battery_level=payload.get("battery_level"),
+            device_id=device_id,
+        )
+    except (ValidationError, TypeError) as e:
+        logger.warning(f"MQTT: Invalid payload for {device_id}: {e}")
+        return
+
+    lat = validated.latitude
+    lon = validated.longitude
+    alt = validated.altitude
+    speed = validated.speed
+    battery = validated.battery_level
+
+    # Verify device exists in DB (silently drop messages for unknown devices)
+    if not await _device_exists(device_id):
+        logger.warning(f"MQTT: Message from unknown device_id '{device_id}', dropping")
         return
 
     async with AsyncSessionLocal() as session:
@@ -79,15 +123,15 @@ async def process_telemetry(payload: dict, device_id: str):
         })
 
 async def process_lwt(device_id: str):
-    # The LWT writes a 'status: offline' marker to history without coordinates
-    # We use a dummy coordinate of 0 0 for the point requirement to satisfy DB constraints, 
-    # but practically we would flag an 'is_active' boolean. To keep schemas identical per the plan, 
-    # we log -1 altitude to represent a system event.
+    if not _validate_device_id(device_id):
+        logger.warning(f"MQTT LWT: Invalid device_id format: {device_id[:50]}")
+        return
+
     async with AsyncSessionLocal() as session:
         history = LocationHistory(
             device_id=device_id,
             coordinates="POINT(0 0)",
-            altitude=-1.0, 
+            altitude=-1.0,
             battery_level=-1.0
         )
         session.add(history)
@@ -101,7 +145,14 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     topic = msg.topic
-    
+
+    # Enforce max payload size
+    if len(msg.payload) > MQTT_MAX_PAYLOAD_BYTES:
+        logger.warning(
+            f"MQTT: Oversized payload ({len(msg.payload)} bytes) on topic {topic}, dropping"
+        )
+        return
+
     try:
         payload = json.loads(msg.payload.decode())
     except Exception as e:
@@ -110,16 +161,20 @@ def on_message(client, userdata, msg):
 
     # Extract device_id from topic
     parts = topic.split("/")
-    
-    # We are in a background thread created by paho-mqtt. 
-    # Use asyncio.run() to safely execute async functions from this synchronous thread.
+
     if len(parts) == 3 and parts[2] != "+":
         device_id = parts[2]
+        if not _validate_device_id(device_id):
+            logger.warning(f"MQTT: Invalid device_id in topic: {topic}")
+            return
         if _main_loop:
             asyncio.run_coroutine_threadsafe(process_telemetry(payload, device_id), _main_loop)
-            
+
     elif len(parts) == 4 and parts[3] == "status":
         device_id = parts[2]
+        if not _validate_device_id(device_id):
+            logger.warning(f"MQTT LWT: Invalid device_id in topic: {topic}")
+            return
         status = payload.get("status")
         if status == "offline" and _main_loop:
             asyncio.run_coroutine_threadsafe(process_lwt(device_id), _main_loop)
@@ -141,7 +196,7 @@ class MQTTListener:
             logger.info(f"MQTT Listener connected to {MQTT_BROKER}:{MQTT_PORT}")
         except Exception as e:
             logger.error(f"Could not connect to MQTT broker: {e}")
-            
+
     def stop(self):
         self.client.loop_stop()
         self.client.disconnect()

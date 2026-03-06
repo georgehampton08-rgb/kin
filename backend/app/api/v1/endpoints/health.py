@@ -36,7 +36,7 @@ async def health_check():
             await session.execute(text("SELECT 1"))
     except Exception as e:
         logger.error(f"Health check DB error: {e}")
-        result["db"] = f"error: {e}"
+        result["db"] = "error"
         result["status"] = "degraded"
 
     # ── Broker check ──────────────────────────────────────────────────────────
@@ -46,7 +46,7 @@ async def health_check():
             result["status"] = "degraded"
     except Exception as e:
         logger.error(f"Health check broker error: {e}")
-        result["broker"] = f"error: {e}"
+        result["broker"] = "error"
         result["status"] = "degraded"
 
     return result

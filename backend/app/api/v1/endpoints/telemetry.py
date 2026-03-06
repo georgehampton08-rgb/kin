@@ -17,15 +17,16 @@ For each point:
 import gzip
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, Depends, Request, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, Request, status, HTTPException
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from sqlalchemy import text
 
 from app.schemas.location import LocationUpdate
 from app.api.deps import get_current_user
 from app.core.auth import PGCRYPTO_KEY
+from app.core.rate_limiter import limiter
 from app.db.session import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
@@ -35,52 +36,107 @@ LOW_BATTERY_THRESHOLD = 20.0
 router = APIRouter()
 
 
+MAX_BATCH_SIZE = 100
+MAX_DECOMPRESSED_BYTES = 1_048_576  # 1 MB
+
+
+def _validate_timestamp_window(v: datetime) -> datetime:
+    """Reject timestamps more than 60s in the future or older than 24h."""
+    now = datetime.now(timezone.utc)
+    if v.tzinfo is None:
+        v = v.replace(tzinfo=timezone.utc)
+    if v > now + timedelta(seconds=60):
+        raise ValueError("Timestamp cannot be more than 60 seconds in the future")
+    if v < now - timedelta(hours=24):
+        raise ValueError("Timestamp cannot be older than 24 hours")
+    return v
+
+
 class BatchPoint(BaseModel):
-    lat: float
-    lng: float
-    speed: float | None = None
-    accuracy: float | None = None
-    battery_level: float | None = None
+    model_config = ConfigDict(extra='forbid')
+
+    lat: float = Field(..., ge=-90, le=90)
+    lng: float = Field(..., ge=-180, le=180)
+    speed: float | None = Field(None, ge=0, le=200)
+    accuracy: float | None = Field(None, ge=0, le=1000)
+    battery_level: float | None = Field(None, ge=0, le=100)
     ts: datetime | None = None
+
+    @field_validator("ts")
+    @classmethod
+    def validate_ts(cls, v):
+        if v is not None:
+            return _validate_timestamp_window(v)
+        return v
 
 
 class BatchPayload(BaseModel):
-    device_id: str
-    batch: list[BatchPoint]
+    model_config = ConfigDict(extra='forbid')
+
+    device_id: str = Field(..., min_length=1, max_length=255)
+    batch: list[BatchPoint] = Field(..., max_length=MAX_BATCH_SIZE)
 
 
 # ── Comms Interception Payloads ────────────────────────────────
 
 class NotificationPayload(BaseModel):
-    package_name: str
-    title: str | None = None
-    text: str | None = None
+    model_config = ConfigDict(extra='forbid')
+
+    package_name: str = Field(..., min_length=1, max_length=255)
+    title: str | None = Field(None, max_length=500)
+    text: str | None = Field(None, max_length=2000)
     timestamp: datetime
 
+    @field_validator("timestamp")
+    @classmethod
+    def validate_ts(cls, v):
+        return _validate_timestamp_window(v)
+
+
 class SmsPayload(BaseModel):
-    sender: str
-    body: str | None = None
+    model_config = ConfigDict(extra='forbid')
+
+    sender: str = Field(..., min_length=1, max_length=50)
+    body: str | None = Field(None, max_length=2000)
     timestamp: datetime
     is_incoming: bool
 
+    @field_validator("timestamp")
+    @classmethod
+    def validate_ts(cls, v):
+        return _validate_timestamp_window(v)
+
+
 class CallLogPayload(BaseModel):
-    number: str
-    duration_seconds: int
-    type: str # 'missed', 'incoming', 'outgoing'
+    model_config = ConfigDict(extra='forbid')
+
+    number: str = Field(..., min_length=1, max_length=30)
+    duration_seconds: int = Field(..., ge=0, le=86400)
+    type: str = Field(..., pattern=r"^(missed|incoming|outgoing)$")
     timestamp: datetime
 
+    @field_validator("timestamp")
+    @classmethod
+    def validate_ts(cls, v):
+        return _validate_timestamp_window(v)
+
+
 class CommsBatchRequest(BaseModel):
-    device_id: str
-    notifications: list[NotificationPayload] | None = None
-    sms: list[SmsPayload] | None = None
-    calls: list[CallLogPayload] | None = None
+    model_config = ConfigDict(extra='forbid')
+
+    device_id: str = Field(..., min_length=1, max_length=255)
+    notifications: list[NotificationPayload] | None = Field(None, max_length=100)
+    sms: list[SmsPayload] | None = Field(None, max_length=100)
+    calls: list[CallLogPayload] | None = Field(None, max_length=100)
 
 
 
 # ── Single point ingest ───────────────────────────────────────
 
 @router.post("/ingest", status_code=status.HTTP_201_CREATED)
+@limiter.limit("60/minute")
 async def ingest_telemetry(
+    request: Request,
     data: LocationUpdate,
     user: dict = Depends(get_current_user),
 ):
@@ -102,6 +158,7 @@ async def ingest_telemetry(
 # ── Batch ingest (gzip-compressed) ───────────────────────────
 
 @router.post("/ingest/batch", status_code=status.HTTP_201_CREATED)
+@limiter.limit("60/minute")
 async def ingest_batch(
     request: Request,
     user: dict = Depends(get_current_user),
@@ -115,10 +172,21 @@ async def ingest_batch(
 
     content_encoding = request.headers.get("content-encoding", "")
     if "gzip" in content_encoding:
-        body = gzip.decompress(body)
+        try:
+            body = gzip.decompress(body)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid gzip data")
+        if len(body) > MAX_DECOMPRESSED_BYTES:
+            raise HTTPException(status_code=413, detail="Decompressed payload too large")
 
-    raw = json.loads(body)
-    payload = BatchPayload(**raw)
+    try:
+        raw = json.loads(body)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+    try:
+        payload = BatchPayload(**raw)
+    except Exception:
+        raise HTTPException(status_code=422, detail="Invalid batch payload")
 
     processed = 0
     for pt in payload.batch:
@@ -141,7 +209,9 @@ async def ingest_batch(
 # ── Communications Ingest Routes ──────────────────────────────
 
 @router.post("/comms", status_code=status.HTTP_201_CREATED)
+@limiter.limit("60/minute")
 async def ingest_comms(
+    request: Request,
     payload: CommsBatchRequest,
     user: dict = Depends(get_current_user)
 ):

@@ -12,3 +12,5 @@ python-jose[cryptography]
 passlib[bcrypt]
 bcrypt==4.0.1
 apscheduler==3.11.2
+slowapi==0.1.9
+limits

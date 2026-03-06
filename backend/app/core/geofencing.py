@@ -34,7 +34,6 @@ async def check_geofences(session: AsyncSession, device_id: str, lon: float, lat
     if not zones:
         return
 
-    point_wkt = f"SRID=4326;POINT({lon} {lat})"
     currently_inside: set[int] = set()
 
     for zone in zones:

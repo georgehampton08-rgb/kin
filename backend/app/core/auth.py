@@ -17,12 +17,27 @@ from passlib.context import CryptContext
 logger = logging.getLogger(__name__)
 
 # ── Configuration ────────────────────────────────────────────
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "DEV_ONLY_CHANGE_ME_IN_PRODUCTION_256bit_key_abc123")
+# In production, these MUST be set via environment variables (from GCP Secret Manager).
+# The dev-only defaults are only for local development — they log a warning on startup.
+_ENV = os.getenv("ENVIRONMENT", "development")
+
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
+if not JWT_SECRET_KEY:
+    if _ENV == "production":
+        raise RuntimeError("JWT_SECRET_KEY must be set in production")
+    JWT_SECRET_KEY = "DEV_ONLY_CHANGE_ME_IN_PRODUCTION_256bit_key_abc123"
+    logger.warning("Using development-only JWT_SECRET_KEY — DO NOT use in production")
+
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
-PGCRYPTO_KEY = os.getenv("PGCRYPTO_KEY", "DEV_ONLY_PGCRYPTO_SYMMETRIC_KEY")
+PGCRYPTO_KEY = os.getenv("PGCRYPTO_KEY", "")
+if not PGCRYPTO_KEY:
+    if _ENV == "production":
+        raise RuntimeError("PGCRYPTO_KEY must be set in production")
+    PGCRYPTO_KEY = "DEV_ONLY_PGCRYPTO_SYMMETRIC_KEY"
+    logger.warning("Using development-only PGCRYPTO_KEY — DO NOT use in production")
 
 # ── Password hashing ────────────────────────────────────────
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

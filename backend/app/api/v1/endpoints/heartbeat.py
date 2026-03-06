@@ -8,27 +8,45 @@ Upserts device_status: sets status=ONLINE, records battery + GPS accuracy.
 
 If no heartbeat arrives within 12 minutes, APScheduler marks the device STALE.
 """
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from sqlalchemy import text
 
 from app.api.deps import get_current_user
+from app.core.rate_limiter import limiter
 from app.db.session import AsyncSessionLocal
 
 router = APIRouter()
 
 
 class HeartbeatPayload(BaseModel):
-    device_id: str = Field(..., description="Unique device identifier")
+    model_config = ConfigDict(extra='forbid')
+
+    device_id: str = Field(..., min_length=1, max_length=255, description="Unique device identifier")
     battery_level: float | None = Field(None, ge=0, le=100)
-    gps_accuracy: float | None = Field(None, description="Accuracy in metres")
+    gps_accuracy: float | None = Field(None, ge=0, le=1000, description="Accuracy in metres")
     timestamp: datetime | None = Field(None)
+
+    @field_validator("timestamp")
+    @classmethod
+    def validate_ts(cls, v):
+        if v is not None:
+            now = datetime.now(timezone.utc)
+            if v.tzinfo is None:
+                v = v.replace(tzinfo=timezone.utc)
+            if v > now + timedelta(seconds=60):
+                raise ValueError("Timestamp cannot be more than 60 seconds in the future")
+            if v < now - timedelta(hours=24):
+                raise ValueError("Timestamp cannot be older than 24 hours")
+        return v
 
 
 @router.post("/heartbeat")
+@limiter.limit("60/minute")
 async def heartbeat(
+    request: Request,
     payload: HeartbeatPayload,
     user: dict = Depends(get_current_user),
 ):

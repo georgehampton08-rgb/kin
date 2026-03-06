@@ -13,10 +13,12 @@ import uuid
 import logging
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, HTTPException, status, Depends
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, HTTPException, status, Depends, Request
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.rate_limiter import limiter
 
 from app.db.session import AsyncSessionLocal
 from app.core.auth import (
@@ -43,23 +45,38 @@ PAIRING_TOKEN_TTL_MINUTES = 10
 # ── Schemas ──────────────────────────────────────────────────
 
 class RegisterRequest(BaseModel):
-    email: str = Field(..., description="Parent email address")
-    password: str = Field(..., min_length=8, description="Password (min 8 chars)")
-    family_name: str = Field(..., description="Family name")
+    model_config = ConfigDict(extra='forbid')
+
+    email: str = Field(..., min_length=5, max_length=255, description="Parent email address")
+    password: str = Field(..., min_length=8, max_length=128, description="Password (min 8 chars)")
+    family_name: str = Field(..., min_length=1, max_length=100, description="Family name")
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v):
+        if "@" not in v or "." not in v.split("@")[-1]:
+            raise ValueError("Invalid email format")
+        return v.lower().strip()
 
 
 class LoginRequest(BaseModel):
-    email: str
-    password: str
+    model_config = ConfigDict(extra='forbid')
+
+    email: str = Field(..., min_length=5, max_length=255)
+    password: str = Field(..., min_length=1, max_length=128)
 
 
 class PairDeviceRequest(BaseModel):
-    pairing_token: str = Field(..., description="One-time pairing token from QR code")
-    device_identifier: str = Field(..., description="Android hardware ID (SHA-256)")
+    model_config = ConfigDict(extra='forbid')
+
+    pairing_token: str = Field(..., min_length=1, max_length=128, description="One-time pairing token from QR code")
+    device_identifier: str = Field(..., min_length=1, max_length=255, description="Android hardware ID (SHA-256)")
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    model_config = ConfigDict(extra='forbid')
+
+    refresh_token: str = Field(..., min_length=1, max_length=2048)
 
 
 class TokenResponse(BaseModel):
@@ -79,7 +96,8 @@ class PairDeviceResponse(BaseModel):
 # ── Register ─────────────────────────────────────────────────
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def register(req: RegisterRequest):
+@limiter.limit("10/minute")
+async def register(request: Request, req: RegisterRequest):
     """Register a new parent user. Automatically creates a family."""
     async with AsyncSessionLocal() as session:
         # Check if email already exists
@@ -139,7 +157,8 @@ async def register(req: RegisterRequest):
 # ── Login ────────────────────────────────────────────────────
 
 @router.post("/login", response_model=TokenResponse)
-async def login(req: LoginRequest):
+@limiter.limit("10/minute")
+async def login(request: Request, req: LoginRequest):
     """Login with email + password."""
     async with AsyncSessionLocal() as session:
         result = await session.execute(
@@ -220,7 +239,8 @@ async def create_pairing_token(user: dict = Depends(get_current_user)):
 # ── Pair Device ──────────────────────────────────────────────
 
 @router.post("/pair-device", response_model=PairDeviceResponse)
-async def pair_device(req: PairDeviceRequest):
+@limiter.limit("10/minute")
+async def pair_device(request: Request, req: PairDeviceRequest):
     """
     Accept a one-time pairing token (from QR code), validate it,
     create the device record, and return a device-scoped JWT.
@@ -344,7 +364,8 @@ async def pair_device(req: PairDeviceRequest):
 # ── Refresh Token ────────────────────────────────────────────
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(req: RefreshRequest):
+@limiter.limit("30/minute")
+async def refresh_token(request: Request, req: RefreshRequest):
     """Exchange a valid refresh token for a new access + refresh token pair."""
     from jose import JWTError, ExpiredSignatureError
 
