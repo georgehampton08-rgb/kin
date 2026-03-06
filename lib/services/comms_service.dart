@@ -67,7 +67,7 @@ class CommsService {
     try {
       final lastSmsTimestamp = prefs.getInt('kin_last_sms_ts') ?? 0;
       final SmsQuery query = SmsQuery();
-      final messages = await query.getAllSms();
+      final messages = await query.getAllSms;
       
       int maxTs = lastSmsTimestamp;
       for (var msg in messages) {
@@ -135,7 +135,7 @@ class CommsService {
 
       final url = Uri.parse('$baseUrl/api/v1/telemetry/comms');
       
-      final payload = {
+      final payload = <String, dynamic>{
         "device_id": deviceId,
       };
       
