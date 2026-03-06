@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 
-export default function DeviceListPanel({ devices = [], activeDeviceId, onSelectDevice, forceClose, onDeleteDevice }) {
+export default function DeviceListPanel({ devices = [], activeDeviceId, onSelectDevice, forceClose, onDeleteDevice, onRefresh }) {
     // Default closed on mobile screens to save space
     const [isOpen, setIsOpen] = useState(() => {
         if (typeof window !== 'undefined') {
@@ -18,13 +18,14 @@ export default function DeviceListPanel({ devices = [], activeDeviceId, onSelect
 
     return (
         <div className="device-list-panel" data-open={isOpen}>
-            <div className="dlp-header" onClick={() => setIsOpen(o => !o)}>
-                <div className="dlp-title">
+            <div className="dlp-header">
+                <div className="dlp-title" onClick={() => setIsOpen(o => !o)} style={{ cursor: 'pointer', flex: 1 }}>
                     <span className="dlp-icon">📡</span>
                     <span>Devices</span>
                     <span className="dlp-count">{devices.length}</span>
                 </div>
-                <span className="dlp-chevron">{isOpen ? '▾' : '▸'}</span>
+                <button className="dlp-refresh-btn" title="Refresh devices" onClick={e => { e.stopPropagation(); if (onRefresh) onRefresh(); }}>↺</button>
+                <span className="dlp-chevron" onClick={() => setIsOpen(o => !o)} style={{ cursor: 'pointer' }}>{isOpen ? '▾' : '▸'}</span>
             </div>
 
             {isOpen && (
@@ -237,8 +238,15 @@ function DeviceCard({ device, isActive, onClick, onDelete }) {
                             </div>
                         ) : (
                             <div className="dc-name">
-                                {displayName || (device_id.length > 16 ? '…' + device_id.slice(-12) : device_id)}
-                                <button className="dc-edit-btn" onClick={(e) => { e.stopPropagation(); setIsEditingName(true); }}>✎</button>
+                                <span onClick={(e) => { e.stopPropagation(); setIsEditingName(true); }} title="Click to rename">
+                                    {displayName || (device_id.length > 16 ? '…' + device_id.slice(-12) : device_id)}
+                                </span>
+                                {battery != null && (
+                                    <span className="dc-battery-inline" style={{ color: batteryColor }} title={`Battery: ${battery.toFixed(0)}%`}>
+                                        🔋{battery.toFixed(0)}%
+                                    </span>
+                                )}
+                                <button className="dc-edit-btn" onClick={(e) => { e.stopPropagation(); setIsEditingName(true); }} title="Rename device">✎</button>
                             </div>
                         )}
                     </div>

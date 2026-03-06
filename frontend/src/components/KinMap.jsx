@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import * as turf from '@turf/turf';
@@ -9,6 +9,14 @@ const TRAIL_LENGTH = 10;
 // Opacity levels for zone pulse animation (active vs inactive)
 const ZONE_OPACITY_INACTIVE = 0.15;
 const ZONE_OPACITY_ACTIVE = 0.45;
+
+// Module-level color fn — usable inside map 'load' callback without closure issues
+function stringToColorStatic(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+    return '#' + '00000'.substring(0, 6 - c.length) + c;
+}
 
 export default function KinMap({
     targetLocation,
@@ -28,6 +36,9 @@ export default function KinMap({
     const currentPosRef = useRef(null);
     const mapReadyRef = useRef(false);
     const tiltRef = useRef(false);
+    const [mapReady, setMapReady] = useState(false); // Triggers re-render when map loads
+    const liveDevicesRef = useRef(liveDevices); // Track latest liveDevices for use inside callbacks
+    useEffect(() => { liveDevicesRef.current = liveDevices; }, [liveDevices]);
 
     // ── Initialize Map once ───────────────────────────────────────────────
     useEffect(() => {
@@ -114,6 +125,22 @@ export default function KinMap({
             // Markers will be created dynamically as devices report location.
 
             mapReadyRef.current = true;
+            setMapReady(true); // ← triggers re-render so liveDevices effect runs with map ready
+
+            // Immediately sync any devices that arrived before the map was ready
+            Object.entries(liveDevicesRef.current).forEach(([id, deviceState]) => {
+                const loc = deviceState.lastLocation;
+                if (!loc || !loc.lat || !loc.lon) return;
+                const pos = [loc.lon, loc.lat];
+                if (!multiMarkersRef.current[id]) {
+                    const el = document.createElement('div');
+                    el.className = 'child-marker bg-target';
+                    el.style.setProperty('--marker-color', stringToColorStatic(id));
+                    const dot = document.createElement('div'); dot.className = 'marker-dot'; el.appendChild(dot);
+                    multiMarkersRef.current[id] = new maplibregl.Marker({ element: el }).setLngLat(pos).addTo(map);
+                }
+            });
+
             if (onMapReady) onMapReady(map);
         });
 
@@ -124,6 +151,16 @@ export default function KinMap({
             mapReadyRef.current = false;
         };
     }, []);
+
+    // ── Fly to selected device when activeDeviceId changes ───────────────
+    useEffect(() => {
+        if (!mapReadyRef.current || !mapRef.current || !activeDeviceId) return;
+        const deviceState = liveDevices[activeDeviceId];
+        const loc = deviceState?.lastLocation;
+        if (loc?.lat && loc?.lon) {
+            mapRef.current.flyTo({ center: [loc.lon, loc.lat], zoom: 15, duration: 800, essential: true });
+        }
+    }, [activeDeviceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Update zone polygons ─────────────────────────────────────────────
     useEffect(() => {
@@ -173,13 +210,8 @@ export default function KinMap({
         }
     }, [historyFeatures]);
 
-    // Helper to get a consistent color from string
-    const stringToColor = (str) => {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
-        const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
-        return '#' + '00000'.substring(0, 6 - c.length) + c;
-    };
+    // Helper to get a consistent color from string (also available as module-level for map load callback)
+    const stringToColor = stringToColorStatic;
 
     // ── Location updates (live animation OR history snap) ────────────────
     // Handle history snap for targetLocation
@@ -203,7 +235,6 @@ export default function KinMap({
     // Handle live multi-device locations
     useEffect(() => {
         if (isHistory || !mapReadyRef.current) {
-            // Cleanup markers if entering history
             if (isHistory) {
                 Object.keys(multiMarkersRef.current).forEach(id => {
                     if (id !== '__history') {
@@ -285,7 +316,7 @@ export default function KinMap({
             }
         });
 
-    }, [liveDevices, activeDeviceId, isHistory]);
+    }, [liveDevices, activeDeviceId, isHistory, mapReady]);
 
     function animateActiveMarker(marker, newTarget) {
         if (!currentPosRef.current) {

@@ -48,51 +48,55 @@ export default function App() {
     const [knownDevices, setKnownDevices] = useState([]);
 
     // Fetch paired devices on mount
-    useEffect(() => {
+    const fetchDevices = useCallback(async () => {
         if (!user) return;
-        const fetchDevices = async () => {
-            try {
-                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-                const res = await fetchWithAuth(`${apiUrl}/api/v1/devices/`);
-                if (res.ok) {
-                    const data = await res.json();
-                    const mappedDevices = data.devices.map(d => ({
-                        device_id: d.device_id,
-                        nickname: d.nickname,
-                        app_version: d.app_version,
-                        os_info: d.os_info,
-                        unread_sms: d.unread_sms,
-                        missed_calls: d.missed_calls,
-                        unread_notifs: d.unread_notifs,
-                        last_lat: d.last_lat,
-                        last_lon: d.last_lon,
-                        last_seen_at: d.last_seen_at,
-                        status: d.last_seen_at ? 'STALE' : 'OFFLINE',
-                        lastSeen: d.last_seen_at || d.paired_at
-                    }));
-                    setKnownDevices(mappedDevices);
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const res = await fetchWithAuth(`${apiUrl}/api/v1/devices/`);
+            if (res.ok) {
+                const data = await res.json();
+                const mappedDevices = data.devices.map(d => ({
+                    device_id: d.device_id,
+                    nickname: d.nickname,
+                    app_version: d.app_version,
+                    os_info: d.os_info,
+                    unread_sms: d.unread_sms,
+                    missed_calls: d.missed_calls,
+                    unread_notifs: d.unread_notifs,
+                    last_lat: d.last_lat,
+                    last_lon: d.last_lon,
+                    last_seen_at: d.last_seen_at,
+                    status: d.last_seen_at ? 'STALE' : 'OFFLINE',
+                    lastSeen: d.last_seen_at || d.paired_at
+                }));
+                setKnownDevices(mappedDevices);
 
-                    // Pre-seed the map from DB last known coords
-                    setDeviceStates(prev => {
-                        const next = { ...prev };
-                        mappedDevices.forEach(d => {
-                            if (d.last_lat && d.last_lon && !next[d.device_id]?.lastLocation) {
-                                next[d.device_id] = {
-                                    lastLocation: { lat: d.last_lat, lon: d.last_lon, speed: 0, battery: null },
-                                    status: d.status,
-                                    deviceStatus: null,
-                                };
-                            }
-                        });
-                        return next;
+                // Pre-seed the map from DB last known coords (always overwrite on refresh)
+                setDeviceStates(prev => {
+                    const next = { ...prev };
+                    mappedDevices.forEach(d => {
+                        if (d.last_lat && d.last_lon) {
+                            next[d.device_id] = {
+                                ...(next[d.device_id] || {}),
+                                lastLocation: next[d.device_id]?.lastLocation || {
+                                    lat: d.last_lat, lon: d.last_lon, speed: 0, battery: null
+                                },
+                                status: next[d.device_id]?.status || d.status,
+                                deviceStatus: next[d.device_id]?.deviceStatus || null,
+                            };
+                        }
                     });
-                }
-            } catch (err) {
-                console.error("Failed to fetch devices:", err);
+                    return next;
+                });
             }
-        };
-        fetchDevices();
+        } catch (err) {
+            console.error('Failed to fetch devices:', err);
+        }
     }, [user]);
+
+    useEffect(() => {
+        fetchDevices();
+    }, [fetchDevices]);
 
     const [deviceStates, setDeviceStates] = useState({});
 
@@ -291,7 +295,11 @@ export default function App() {
                 {/* Comms Panel Overlay */}
                 {mode === 'comms' && (
                     <div className="comms-overlay">
-                        <CommsPanel deviceId={deviceId} />
+                        <CommsPanel
+                            deviceId={deviceId}
+                            knownDevices={knownDevices}
+                            onSelectDevice={id => setDeviceId(id)}
+                        />
                     </div>
                 )}
 
@@ -302,6 +310,7 @@ export default function App() {
                     onSelectDevice={id => setDeviceId(id)}
                     forceClose={sidebarOpen}
                     onDeleteDevice={handleDeleteDevice}
+                    onRefresh={() => fetchDevices()}
                 />
 
                 {/* Global Settings Drawer */}
