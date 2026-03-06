@@ -223,7 +223,6 @@ class LocationService {
     _heartbeatTimer = Timer.periodic(
       Duration(minutes: _heartbeatIntervalMinutes),
       (_) async {
-        final state = await bg.BackgroundGeolocation.state;
         await _sendHeartbeat(
           batteryLevel: null, // will be populated from battery plugin
           gpsAccuracy: null,

@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:notification_listener_service/notification_listener_service.dart';
-import 'package:notification_listener_service/notification_event.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:call_log/call_log.dart';
 import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
