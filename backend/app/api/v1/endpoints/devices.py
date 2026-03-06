@@ -21,11 +21,29 @@ async def list_devices(user: dict = Depends(get_current_user)):
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             text("""
-                SELECT d.device_identifier as device_id, d.is_active, d.paired_at, 
-                       d.nickname, d.app_version, d.os_info,
-                       (SELECT COUNT(id) FROM sms_messages s WHERE s.device_id = d.device_identifier AND s.is_read = false) as unread_sms,
-                       (SELECT COUNT(id) FROM call_logs c WHERE c.device_id = d.device_identifier AND c.is_read = false AND c.type = 'missed') as missed_calls,
-                       (SELECT COUNT(id) FROM notifications n WHERE n.device_id = d.device_identifier AND n.is_read = false) as unread_notifs
+                SELECT d.device_identifier as device_id,
+                       d.is_active,
+                       d.paired_at,
+                       COALESCE(d.nickname, NULL)      as nickname,
+                       COALESCE(d.app_version, NULL)   as app_version,
+                       COALESCE(d.os_info, NULL)        as os_info,
+                       COALESCE(
+                           (SELECT COUNT(s.id) FROM sms_messages s
+                            WHERE s.device_id = d.device_identifier AND s.is_read = false),
+                           0
+                       ) as unread_sms,
+                       COALESCE(
+                           (SELECT COUNT(c.id) FROM call_logs c
+                            WHERE c.device_id = d.device_identifier
+                              AND c.is_read = false
+                              AND c.type = 'missed'),
+                           0
+                       ) as missed_calls,
+                       COALESCE(
+                           (SELECT COUNT(n.id) FROM notifications n
+                            WHERE n.device_id = d.device_identifier AND n.is_read = false),
+                           0
+                       ) as unread_notifs
                 FROM devices d
                 WHERE d.is_active = true AND d.family_id = :family_id
                 ORDER BY d.paired_at DESC
@@ -43,9 +61,9 @@ async def list_devices(user: dict = Depends(get_current_user)):
             "nickname": row.nickname,
             "app_version": row.app_version,
             "os_info": row.os_info,
-            "unread_sms": row.unread_sms,
-            "missed_calls": row.missed_calls,
-            "unread_notifs": row.unread_notifs,
+            "unread_sms": int(row.unread_sms or 0),
+            "missed_calls": int(row.missed_calls or 0),
+            "unread_notifs": int(row.unread_notifs or 0),
         })
 
     return {"devices": devices}
