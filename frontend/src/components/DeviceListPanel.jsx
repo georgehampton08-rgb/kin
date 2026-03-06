@@ -2,7 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function DeviceListPanel({ devices = [], activeDeviceId, onSelectDevice }) {
-    const [isOpen, setIsOpen] = useState(true);
+    // Default closed on mobile screens to save space
+    const [isOpen, setIsOpen] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return window.innerWidth > 768;
+        }
+        return true;
+    });
 
     return (
         <div className="device-list-panel" data-open={isOpen}>
@@ -29,7 +35,10 @@ export default function DeviceListPanel({ devices = [], activeDeviceId, onSelect
                                 key={dev.device_id}
                                 device={dev}
                                 isActive={dev.device_id === activeDeviceId}
-                                onClick={() => onSelectDevice(dev.device_id)}
+                                onClick={() => {
+                                    onSelectDevice(dev.device_id);
+                                    if (window.innerWidth <= 768) setIsOpen(false); // auto-close on mobile
+                                }}
                             />
                         ))
                     )}
@@ -54,6 +63,16 @@ export default function DeviceListPanel({ devices = [], activeDeviceId, onSelect
                 }
                 .device-list-panel:hover {
                     box-shadow: 0 8px 48px rgba(0,0,0,0.6), 0 0 12px rgba(0,255,204,0.15);
+                }
+                @media (max-width: 768px) {
+                    .device-list-panel {
+                        top: 12px;
+                        right: 12px;
+                        left: auto;
+                        min-width: 200px;
+                        max-width: 80vw;
+                        z-index: 25; /* Ensure above map controls */
+                    }
                 }
                 .dlp-header {
                     display: flex;
