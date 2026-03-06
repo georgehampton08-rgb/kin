@@ -124,20 +124,32 @@ async def delete_device(device_id: str, user: dict = Depends(get_current_user)):
         row = res.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Device not found")
+        device_uuid = row.id
 
-        # Delete all associated data first
-        await session.execute(text("DELETE FROM notifications WHERE device_id = :device_id"), {"device_id": device_id})
-        await session.execute(text("DELETE FROM sms_messages WHERE device_id = :device_id"), {"device_id": device_id})
-        await session.execute(text("DELETE FROM call_logs WHERE device_id = :device_id"), {"device_id": device_id})
-        await session.execute(text("DELETE FROM location_history WHERE device_id = :device_id"), {"device_id": device_id})
-        await session.execute(text("DELETE FROM locations_raw WHERE device_id = :device_id"), {"device_id": device_id})
+        try:
+            # Delete string-based associations first
+            await session.execute(text("DELETE FROM notifications WHERE device_id = :device_id"), {"device_id": device_id})
+            await session.execute(text("DELETE FROM sms_messages WHERE device_id = :device_id"), {"device_id": device_id})
+            await session.execute(text("DELETE FROM call_logs WHERE device_id = :device_id"), {"device_id": device_id})
+            await session.execute(text("DELETE FROM location_history WHERE device_id = :device_id"), {"device_id": device_id})
+            await session.execute(text("DELETE FROM locations_raw WHERE device_id = :device_id"), {"device_id": device_id})
+            await session.execute(text("DELETE FROM current_status WHERE device_id = :device_id"), {"device_id": device_id})
+            await session.execute(text("DELETE FROM geofence_events WHERE device_id = :device_id"), {"device_id": device_id})
+            await session.execute(text("DELETE FROM matched_routes WHERE device_id = :device_id"), {"device_id": device_id})
 
-        # Delete the device itself
-        await session.execute(
-            text(f"DELETE FROM devices WHERE {where_clause}"),
-            params
-        )
-        await session.commit()
+            # Delete UUID-based associations
+            await session.execute(text("DELETE FROM refresh_tokens WHERE device_id = :device_uuid"), {"device_uuid": device_uuid})
+            await session.execute(text("DELETE FROM pairing_tokens WHERE device_id = :device_uuid"), {"device_uuid": device_uuid})
+
+            # Delete the device itself
+            await session.execute(
+                text(f"DELETE FROM devices WHERE {where_clause}"),
+                params
+            )
+            await session.commit()
+        except Exception as e:
+            await session.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
 
     return {"status": "deleted", "device_id": device_id}
 
