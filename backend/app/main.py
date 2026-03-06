@@ -52,6 +52,37 @@ app.include_router(api_router, prefix="/api/v1")
 
 @app.websocket("/ws/live/{device_id}")
 async def websocket_endpoint(websocket: WebSocket, device_id: str):
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=1008)
+        return
+    
+    try:
+        from app.core.auth import decode_token
+        payload = decode_token(token)
+    except Exception:
+        await websocket.close(code=1008)
+        return
+        
+    family_id = payload.get("family_id")
+    if not family_id:
+        await websocket.close(code=1008)
+        return
+        
+    from app.db.session import AsyncSessionLocal
+    from sqlalchemy import select
+    from app.models.location import Device
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(Device).where(
+                Device.device_identifier == device_id, 
+                Device.family_id == family_id
+            )
+        )
+        if not result.scalar_one_or_none():
+            await websocket.close(code=1008)
+            return
+
     await ws_manager.connect(device_id, websocket)
     await ws_manager.push_device_status(device_id)
     try:

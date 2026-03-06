@@ -188,29 +188,18 @@ async def login(req: LoginRequest):
 # ── Create Pairing Token ────────────────────────────────────
 
 @router.post("/create-pairing-token")
-async def create_pairing_token():
+async def create_pairing_token(user: dict = Depends(get_current_user)):
     """Parent creates a one-time pairing token for QR code."""
     token_value = secrets.token_urlsafe(48)  # ~64 chars
 
     async with AsyncSessionLocal() as session:
-        # Since dashboard has no login yet, assign token to the first available family
-        result = await session.execute(select(Family).limit(1))
-        family = result.scalar_one_or_none()
-        
-        if not family:
-            # Create a fallback family if DB is totally empty
-            family = Family(name="Kin Default Family")
-            session.add(family)
-            await session.commit()
-            await session.refresh(family)
-            
-        result_user = await session.execute(select(User).limit(1))
-        user = result_user.scalar_one_or_none()
+        family_id = user.get("family_id")
+        user_id = user.get("sub") or user.get("user_id")
 
         pt = PairingToken(
             token=token_value,
-            family_id=family.id,
-            created_by=user.id if user else None,
+            family_id=family_id,
+            created_by=user_id,
             expires_at=datetime.now(timezone.utc) + timedelta(minutes=PAIRING_TOKEN_TTL_MINUTES),
         )
         session.add(pt)

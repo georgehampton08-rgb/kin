@@ -23,9 +23,12 @@ export function useKinSocket(deviceId, onAlert) {
 
         function connect() {
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-            // Convert http(s):// → ws(s):// for WebSocket
             const wsBase = apiUrl.replace(/^http/, 'ws');
-            const ws = new WebSocket(`${wsBase}/ws/live/${deviceId}`);
+
+            const token = localStorage.getItem('access_token');
+            const tokenQuery = token ? `?token=${token}` : '';
+
+            const ws = new WebSocket(`${wsBase}/ws/live/${deviceId}${tokenQuery}`);
 
             ws.onopen = () => {
                 setStatus('connected');

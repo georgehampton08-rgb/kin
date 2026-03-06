@@ -64,7 +64,7 @@ async def list_zones(user: dict = Depends(get_current_user)):
     # ... filter by family_id ...
 ```
 
-### 2c. Restore `Depends(get_current_user)` on Devices
+### 2c. Restore `Depends(get_current_user)` on Devices & Comms
 
 ```python
 # app/api/v1/endpoints/devices.py — RESTORE TO:
@@ -73,6 +73,13 @@ async def list_devices(user: dict = Depends(get_current_user)):
     family_id = user.get("family_id")
     # ... filter by family_id AND user membership ...
     # SELECT ... FROM devices WHERE family_id = :family_id
+
+@router.get("/{device_id}/notifications")
+async def get_device_notifications(device_id: str, limit: int = 50, offset: int = 0, user: dict = Depends(get_current_user)):
+    # MUST verify the requested device_id belongs to user's family_id before returning data
+    pass
+
+# Repeat family_id ownership verification for /{device_id}/sms and /{device_id}/calls
 ```
 
 ### 2d. Restore Family-Scoped Pairing Token
@@ -110,7 +117,7 @@ After endpoints require auth, add family-scoped data filtering:
 |------------------------------------|----------------------------------------------|
 | `GET /zones`                       | `WHERE family_id = :jwt_family_id`           |
 | `GET /location/history`            | `WHERE family_id = :jwt_family_id`           |
-| `GET /devices`                     | `WHERE family_id = :jwt_family_id`           |
+| `GET /devices` & `/devices/*`      | `WHERE family_id = :jwt_family_id` (via join)|
 | `POST /zones`                      | Set `family_id = :jwt_family_id` on insert   |
 | `WebSocket /ws/live/{device_id}`   | Verify device belongs to JWT family          |
 
@@ -124,7 +131,7 @@ CREATE POLICY zones_family ON zones
   USING (family_id = current_setting('app.current_family_id')::uuid);
 ```
 
-Repeat for `devices`, `pairing_tokens`, `locations_raw`, `trips`, `device_status`.
+Repeat for `devices`, `pairing_tokens`, `locations_raw`, `trips`, `device_status`, `notifications`, `sms_messages`, and `call_logs`. Note that the new comms tables may require a spatial join or sub-select against `devices` to filter by `family_id` properly if `family_id` is not natively stored on the comms tables.
 
 ---
 

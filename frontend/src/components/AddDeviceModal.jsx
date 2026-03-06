@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { fetchWithAuth } from '../utils/api';
 
 export default function AddDeviceModal({ onClose }) {
     const [token, setToken] = useState(null);
@@ -11,7 +12,7 @@ export default function AddDeviceModal({ onClose }) {
         setError(null);
         try {
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-            const res = await fetch(`${apiUrl}/api/v1/auth/create-pairing-token`, {
+            const res = await fetchWithAuth(`${apiUrl}/api/v1/auth/create-pairing-token`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

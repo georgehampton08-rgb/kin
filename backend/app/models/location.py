@@ -86,7 +86,7 @@ class PairingToken(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=_genuuid)
     token = Column(String(64), unique=True, nullable=False, index=True)
     family_id = Column(UUID(as_uuid=True), ForeignKey("families.id"), nullable=False)
-    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     used_at = Column(DateTime(timezone=True), nullable=True)
     device_id = Column(UUID(as_uuid=True), ForeignKey("devices.id"), nullable=True)

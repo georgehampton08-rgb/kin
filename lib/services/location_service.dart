@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background_geolocation/flutter_background_geolocation.dart' as bg;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import '../providers/location_provider.dart';
 import 'database_service.dart';
@@ -23,18 +24,64 @@ void locationHeadlessTask(bg.HeadlessEvent headlessEvent) async {
   switch (headlessEvent.name) {
     case bg.Event.LOCATION:
       bg.Location location = headlessEvent.event;
+      final battery = location.battery.level * 100;
       await DatabaseService().insertLocation({
         'latitude': location.coords.latitude,
         'longitude': location.coords.longitude,
         'accuracy': location.coords.accuracy,
         'speed': location.coords.speed,
+        'battery_level': battery,
         'timestamp': location.timestamp,
         'synced': 0,
       });
+
+      // Try to flush if we have credentials
+      try {
+        const storage = FlutterSecureStorage();
+        final token = await storage.read(key: 'access_token');
+        final deviceId = await storage.read(key: 'device_id');
+        final apiUrl = await storage.read(key: 'api_url');
+        
+        await DatabaseService().flushIfReady(
+          lowBatteryMode: battery < _lowBatteryThreshold,
+          token: token,
+          deviceId: deviceId,
+          apiUrl: apiUrl,
+        );
+      } catch (e) {
+        debugPrint('[HeadlessTask] Sync failed -> $e');
+      }
       break;
     case bg.Event.MOTIONCHANGE:
       bg.Location location = headlessEvent.event;
       debugPrint('[HeadlessMotionChange] isMoving=${location.isMoving}');
+      // Send a heartbeat if stopped, just like the foreground service
+      if (!location.isMoving) {
+        try {
+          const storage = FlutterSecureStorage();
+          final token = await storage.read(key: 'access_token');
+          final deviceId = await storage.read(key: 'device_id');
+          final apiUrl = await storage.read(key: 'api_url');
+          if (token != null && deviceId != null && apiUrl != null) {
+            final body = json.encode({
+              'device_id': deviceId,
+              'battery_level': location.battery.level * 100,
+              'gps_accuracy': location.coords.accuracy,
+              'timestamp': DateTime.now().toUtc().toIso8601String(),
+            });
+            await http.post(
+              Uri.parse('$apiUrl/api/v1/telemetry/heartbeat'),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+              },
+              body: body,
+            );
+          }
+        } catch (e) {
+          debugPrint('[HeadlessTask] Heartbeat failed -> $e');
+        }
+      }
       break;
     case bg.Event.ACTIVITYCHANGE:
       bg.ActivityChangeEvent event = headlessEvent.event;

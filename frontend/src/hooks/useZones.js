@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import * as turf from '@turf/turf';
+import { fetchWithAuth } from '../utils/api';
 
 /**
  * useZones
@@ -13,7 +14,7 @@ export function useZones() {
 
     useEffect(() => {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-        fetch(`${apiUrl}/api/v1/zones/`)
+        fetchWithAuth(`${apiUrl}/api/v1/zones/`)
             .then(r => r.json())
             .then(data => {
                 const features = data.features || [];

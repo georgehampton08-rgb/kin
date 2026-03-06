@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { fetchWithAuth } from '../utils/api';
 
 /**
  * useHistoryScrub
@@ -17,7 +18,7 @@ export function useHistoryScrub(deviceId) {
         setError(null);
         try {
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-            const resp = await fetch(
+            const resp = await fetchWithAuth(
                 `${apiUrl}/api/v1/history/replay/${deviceId}/${date}`
             );
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);

@@ -4,9 +4,10 @@ Zones API Endpoint
 GET /api/v1/zones/
 Returns all zones. No auth required (dashboard has no login).
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from app.db.session import AsyncSessionLocal
+from app.api.deps import get_current_user
 
 router = APIRouter()
 
@@ -18,16 +19,20 @@ ZONE_COLORS = {
 
 
 @router.get("/")
-async def list_zones():
-    """Returns all zones (no auth — dashboard is public)."""
+async def list_zones(user: dict = Depends(get_current_user)):
+    """Returns all zones for the current family."""
+    family_id = user.get("family_id")
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             text("""
                 SELECT id::text, name, zone_type,
                        COALESCE(radius, 200) AS radius_meters,
                        coordinates
-                FROM zones ORDER BY created_at
-            """)
+                FROM zones 
+                WHERE family_id = :family_id
+                ORDER BY created_at
+            """),
+            {"family_id": family_id}
         )
         rows = result.fetchall()
 
