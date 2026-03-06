@@ -19,13 +19,22 @@ export default function DeviceListPanel({ devices = [], activeDeviceId, onSelect
     return (
         <div className="device-list-panel" data-open={isOpen}>
             <div className="dlp-header">
-                <div className="dlp-title" onClick={() => setIsOpen(o => !o)} style={{ cursor: 'pointer', flex: 1 }}>
+                <div className="dlp-title" onClick={() => setIsOpen(o => !o)} style={{ cursor: 'pointer', flex: 1, display: 'flex', alignItems: 'center' }}>
                     <span className="dlp-icon">📡</span>
                     <span>Devices</span>
                     <span className="dlp-count">{devices.length}</span>
                 </div>
-                <button className="dlp-refresh-btn" title="Refresh devices" onClick={e => { e.stopPropagation(); if (onRefresh) onRefresh(); }}>↺</button>
-                <span className="dlp-chevron" onClick={() => setIsOpen(o => !o)} style={{ cursor: 'pointer' }}>{isOpen ? '▾' : '▸'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <button className="dlp-refresh-btn" title="Refresh devices" onClick={e => { e.stopPropagation(); if (onRefresh) onRefresh(); }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                        </svg>
+                    </button>
+                    <span className="dlp-chevron" onClick={() => setIsOpen(o => !o)} style={{ cursor: 'pointer', padding: '0 4px' }}>
+                        {isOpen ? '▾' : '▸'}
+                    </span>
+                </div>
             </div>
 
             {isOpen && (
@@ -113,6 +122,22 @@ export default function DeviceListPanel({ devices = [], activeDeviceId, onSelect
                     border: 1px solid rgba(0,255,204,0.25);
                     min-width: 20px;
                     text-align: center;
+                }
+                .dlp-refresh-btn {
+                    background: rgba(0,255,204,0.1);
+                    border: 1px solid rgba(0,255,204,0.25);
+                    color: #00ffcc;
+                    border-radius: 6px;
+                    padding: 4px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .dlp-refresh-btn:hover {
+                    background: rgba(0,255,204,0.2);
+                    transform: rotate(30deg);
                 }
                 .dlp-chevron {
                     font-size: 0.9rem;
