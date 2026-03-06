@@ -3,14 +3,15 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import * as turf from '@turf/turf';
 
-const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
-const TRAIL_LENGTH = 10;
+// Using Carto Dark Matter as our dark canvas, stripping out extra labels where possible
+const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json';
+const TRAIL_LENGTH = 30; // Longer trail to really show off the gradient
 
 // Opacity levels for zone pulse animation (active vs inactive)
-const ZONE_OPACITY_INACTIVE = 0.15;
-const ZONE_OPACITY_ACTIVE = 0.45;
+const ZONE_OPACITY_INACTIVE = 0.05;
+const ZONE_OPACITY_ACTIVE = 0.25;
 
-// Module-level color fn — usable inside map 'load' callback without closure issues
+// Module-level color fn
 function stringToColorStatic(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
@@ -30,14 +31,15 @@ export default function KinMap({
 }) {
     const mapContainer = useRef(null);
     const mapRef = useRef(null);
-    const multiMarkersRef = useRef({}); // Stores markers by deviceId
-    const trailRef = useRef([]); // Only tracks active device trail
-    const animationRef = useRef(null);
-    const currentPosRef = useRef(null);
+    const multiMarkersRef = useRef({});
+    const trailRef = useRef([]);
+    const animationRef = useRef({}); // map of animation frames by deviceId
+    const currentPosRef = useRef({});
     const mapReadyRef = useRef(false);
     const tiltRef = useRef(false);
-    const [mapReady, setMapReady] = useState(false); // Triggers re-render when map loads
-    const liveDevicesRef = useRef(liveDevices); // Track latest liveDevices for use inside callbacks
+    const [mapReady, setMapReady] = useState(false);
+    const liveDevicesRef = useRef(liveDevices);
+
     useEffect(() => { liveDevicesRef.current = liveDevices; }, [liveDevices]);
 
     // ── Initialize Map once ───────────────────────────────────────────────
@@ -49,7 +51,8 @@ export default function KinMap({
             style: MAP_STYLE,
             center: [-87.6230, 41.8827],
             zoom: 14,
-            pitch: 40,
+            pitch: 50,
+            bearing: -15, // slight angle for depth
             attributionControl: false,
         });
 
@@ -69,75 +72,78 @@ export default function KinMap({
                 paint: {
                     'fill-color': ['get', 'color'],
                     'fill-opacity': ZONE_OPACITY_INACTIVE,
+                    'fill-outline-color': 'transparent'
                 }
-            });
-            // Zone border ring
+            }, 'watername_ocean'); // Add below labels ideally
+            // Zone border ring (dashed for calm containment)
             map.addLayer({
                 id: 'zones-border',
                 type: 'line',
                 source: 'zones-source',
                 paint: {
                     'line-color': ['get', 'color'],
-                    'line-width': 1.5,
-                    'line-opacity': 0.7,
+                    'line-width': 2,
+                    'line-opacity': 0.6,
+                    'line-dasharray': [2, 4]
                 }
             });
 
             // ── Breadcrumb trail (live mode) ─────────────────────────────────
             map.addSource('trail-source', {
                 type: 'geojson',
+                lineMetrics: true, // Critical for line-gradient
                 data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } }
             });
+
             map.addLayer({
                 id: 'trail-layer',
                 type: 'line',
                 source: 'trail-source',
                 layout: { 'line-join': 'round', 'line-cap': 'round' },
                 paint: {
-                    'line-color': '#00ffcc',
-                    'line-width': 3,
-                    'line-opacity': 0.45,
-                    'line-dasharray': [0, 2]
+                    'line-width': 4,
+                    'line-gradient': [
+                        'interpolate',
+                        ['linear'],
+                        ['line-progress'],
+                        0, 'rgba(0, 230, 184, 0.0)', // Transparent start
+                        0.5, 'rgba(0, 230, 184, 0.5)',
+                        1, 'rgba(0, 230, 184, 1.0)'  // Solid active color
+                    ]
                 }
             });
 
             // ── Full-day history route ───────────────────────────────────────
             map.addSource('history-route-source', {
                 type: 'geojson',
+                lineMetrics: true,
                 data: { type: 'FeatureCollection', features: [] }
             });
-            map.addLayer({
-                id: 'history-route-glow',
-                type: 'line',
-                source: 'history-route-source',
-                layout: { 'line-join': 'round', 'line-cap': 'round' },
-                paint: { 'line-color': '#4488ff', 'line-width': 10, 'line-opacity': 0.2, 'line-blur': 6 }
-            });
+
             map.addLayer({
                 id: 'history-route-layer',
                 type: 'line',
                 source: 'history-route-source',
                 layout: { 'line-join': 'round', 'line-cap': 'round' },
-                paint: { 'line-color': '#5599ff', 'line-width': 3, 'line-opacity': 0.9 }
+                paint: {
+                    'line-color': 'rgba(255, 255, 255, 0.8)',
+                    'line-width': 3,
+                    'line-opacity': 0.8
+                }
             });
 
-            // Removed single child marker creation from here.
-            // Markers will be created dynamically as devices report location.
-
             mapReadyRef.current = true;
-            setMapReady(true); // ← triggers re-render so liveDevices effect runs with map ready
+            setMapReady(true);
 
-            // Immediately sync any devices that arrived before the map was ready
+            // Fast-sync devices that arrived early
             Object.entries(liveDevicesRef.current).forEach(([id, deviceState]) => {
                 const loc = deviceState.lastLocation;
                 if (!loc || !loc.lat || !loc.lon) return;
                 const pos = [loc.lon, loc.lat];
                 if (!multiMarkersRef.current[id]) {
-                    const el = document.createElement('div');
-                    el.className = 'child-marker bg-target';
-                    el.style.setProperty('--marker-color', stringToColorStatic(id));
-                    const dot = document.createElement('div'); dot.className = 'marker-dot'; el.appendChild(dot);
+                    const el = createMarkerElement(id, deviceState.status, false);
                     multiMarkersRef.current[id] = new maplibregl.Marker({ element: el }).setLngLat(pos).addTo(map);
+                    currentPosRef.current[id] = pos;
                 }
             });
 
@@ -145,29 +151,34 @@ export default function KinMap({
         });
 
         return () => {
-            cancelAnimationFrame(animationRef.current);
+            Object.values(animationRef.current).forEach(cancelAnimationFrame);
             map.remove();
             mapRef.current = null;
             mapReadyRef.current = false;
         };
     }, []);
 
-    // ── Fly to selected device when activeDeviceId changes ───────────────
+    // ── Fly to selected device ───────────────────────────────────────────
     useEffect(() => {
         if (!mapReadyRef.current || !mapRef.current || !activeDeviceId) return;
         const deviceState = liveDevices[activeDeviceId];
         const loc = deviceState?.lastLocation;
         if (loc?.lat && loc?.lon) {
-            mapRef.current.flyTo({ center: [loc.lon, loc.lat], zoom: 15, duration: 800, essential: true });
+            mapRef.current.flyTo({
+                center: [loc.lon, loc.lat],
+                zoom: 16,
+                duration: 1200,
+                essential: true,
+                easing: (t) => t * (2 - t) // Ease-out curve
+            });
         }
-    }, [activeDeviceId]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [activeDeviceId]);
 
     // ── Update zone polygons ─────────────────────────────────────────────
     useEffect(() => {
         if (!mapReadyRef.current || !mapRef.current) return;
         const src = mapRef.current.getSource('zones-source');
-        if (!src) return;
-        src.setData({ type: 'FeatureCollection', features: zonePolygons });
+        if (src) src.setData({ type: 'FeatureCollection', features: zonePolygons });
     }, [zonePolygons]);
 
     // ── Pulse active zones ───────────────────────────────────────────────
@@ -175,8 +186,7 @@ export default function KinMap({
         if (!mapReadyRef.current || !mapRef.current) return;
         const map = mapRef.current;
         if (!map.getLayer('zones-fill')) return;
-        // Use a data-driven expression that ups opacity for active zone ids
-        // We encode this as extra properties in the feature
+
         const updatedFeatures = zonePolygons.map(f => ({
             ...f,
             properties: {
@@ -189,14 +199,18 @@ export default function KinMap({
         map.setPaintProperty('zones-fill', 'fill-opacity', [
             'case', ['==', ['get', '_active'], 1], ZONE_OPACITY_ACTIVE, ZONE_OPACITY_INACTIVE
         ]);
+
+        // Slightly bold the border of active zones
+        map.setPaintProperty('zones-border', 'line-width', [
+            'case', ['==', ['get', '_active'], 1], 3, 1
+        ]);
     }, [activeZoneIds, zonePolygons]);
 
     // ── History route layer ──────────────────────────────────────────────
     useEffect(() => {
         if (!mapReadyRef.current || !mapRef.current) return;
         const src = mapRef.current.getSource('history-route-source');
-        if (!src) return;
-        src.setData({ type: 'FeatureCollection', features: historyFeatures });
+        if (src) src.setData({ type: 'FeatureCollection', features: historyFeatures });
 
         if (historyFeatures.length > 0) {
             const allCoords = historyFeatures.flatMap(f => f.geometry?.coordinates || []);
@@ -204,32 +218,46 @@ export default function KinMap({
                 const lons = allCoords.map(c => c[0]), lats = allCoords.map(c => c[1]);
                 mapRef.current.fitBounds(
                     [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
-                    { padding: 80, duration: 800 }
+                    { padding: 120, duration: 1200, easing: (t) => t * (2 - t) }
                 );
             }
         }
     }, [historyFeatures]);
 
-    // Helper to get a consistent color from string (also available as module-level for map load callback)
-    const stringToColor = stringToColorStatic;
+    // Helper to generate marker DOM element based on status
+    function createMarkerElement(id, status, isActiveTarget) {
+        const el = document.createElement('div');
+        el.className = `child-marker status-${status || 'STALE'} ${isActiveTarget ? 'active-target' : ''}`;
+
+        const color = isActiveTarget ? 'var(--color-signal-active)' : stringToColorStatic(id);
+        el.style.setProperty('--marker-color', color);
+
+        const inner = document.createElement('div');
+        inner.className = 'marker-inner';
+        el.appendChild(inner);
+
+        if (status !== 'OFFLINE') {
+            const pulse = document.createElement('div');
+            pulse.className = 'marker-pulse';
+            el.appendChild(pulse);
+        }
+
+        return el;
+    }
 
     // ── Location updates (live animation OR history snap) ────────────────
-    // Handle history snap for targetLocation
     useEffect(() => {
         if (!isHistory || !targetLocation || !mapReadyRef.current) return;
         const newTarget = [targetLocation.lon, targetLocation.lat];
 
-        // Hide multi markers in history mode, or just move the active one
         if (!multiMarkersRef.current['__history']) {
-            const el = document.createElement('div');
-            el.className = 'child-marker active-target';
-            el.style.setProperty('--marker-color', '#fff');
-            const dot = document.createElement('div'); dot.className = 'marker-dot'; el.appendChild(dot);
+            const el = createMarkerElement('history', 'ONLINE', true);
+            el.style.setProperty('--marker-color', 'var(--color-text-primary)');
             multiMarkersRef.current['__history'] = new maplibregl.Marker({ element: el }).setLngLat(newTarget).addTo(mapRef.current);
         } else {
             multiMarkersRef.current['__history'].setLngLat(newTarget);
         }
-        currentPosRef.current = newTarget;
+        currentPosRef.current['__history'] = newTarget;
     }, [targetLocation, isHistory]);
 
     // Handle live multi-device locations
@@ -246,64 +274,47 @@ export default function KinMap({
             return;
         }
 
-        // Remove history marker if present
         if (multiMarkersRef.current['__history']) {
             multiMarkersRef.current['__history'].remove();
             delete multiMarkersRef.current['__history'];
         }
 
-        // Sync markers
         Object.entries(liveDevices).forEach(([id, deviceState]) => {
             const loc = deviceState.lastLocation;
             if (!loc) return;
             const pos = [loc.lon, loc.lat];
-
             const isActive = id === activeDeviceId;
+            const status = deviceState.status;
 
             if (!multiMarkersRef.current[id]) {
-                const el = document.createElement('div');
-                el.className = `child-marker ${isActive ? 'active-target' : 'bg-target'}`;
-
-                const color = isActive ? '#00ffcc' : stringToColor(id);
-                el.style.setProperty('--marker-color', color);
-
-                const dot = document.createElement('div'); dot.className = 'marker-dot'; el.appendChild(dot);
-                if (isActive) {
-                    const pulse = document.createElement('div'); pulse.className = 'marker-pulse'; el.appendChild(pulse);
-                    const pulseSlow = document.createElement('div'); pulseSlow.className = 'marker-pulse-slow'; el.appendChild(pulseSlow);
-                }
-
-                multiMarkersRef.current[id] = new maplibregl.Marker({ element: el })
-                    .setLngLat(pos)
-                    .addTo(mapRef.current);
+                const el = createMarkerElement(id, status, isActive);
+                multiMarkersRef.current[id] = new maplibregl.Marker({ element: el }).setLngLat(pos).addTo(mapRef.current);
+                currentPosRef.current[id] = pos;
             } else {
                 const marker = multiMarkersRef.current[id];
                 const el = marker.getElement();
-                const color = isActive ? '#00ffcc' : stringToColor(id);
+
+                // Update class list for status
+                el.className = `child-marker status-${status || 'STALE'} ${isActive ? 'active-target' : ''}`;
+                const color = isActive ? 'var(--color-signal-active)' : stringToColorStatic(id);
                 el.style.setProperty('--marker-color', color);
 
-                if (isActive) {
-                    if (!el.classList.contains('active-target')) {
-                        el.classList.remove('bg-target');
-                        el.classList.add('active-target');
-                        if (!el.querySelector('.marker-pulse')) {
-                            const pulse = document.createElement('div'); pulse.className = 'marker-pulse'; el.appendChild(pulse);
-                            const pulseSlow = document.createElement('div'); pulseSlow.className = 'marker-pulse-slow'; el.appendChild(pulseSlow);
-                        }
-                    }
-                } else {
-                    if (el.classList.contains('active-target')) {
-                        el.classList.remove('active-target');
-                        el.classList.add('bg-target');
-                        el.querySelectorAll('.marker-pulse, .marker-pulse-slow').forEach(n => n.remove());
-                    }
+                // Re-render inner DOM if pulse needs to change 
+                el.innerHTML = '';
+                const inner = document.createElement('div');
+                inner.className = 'marker-inner';
+                el.appendChild(inner);
+
+                if (status !== 'OFFLINE') {
+                    const pulse = document.createElement('div');
+                    pulse.className = 'marker-pulse';
+                    el.appendChild(pulse);
                 }
 
-                // If this is the active device, animate and pan
-                if (isActive) {
-                    animateActiveMarker(marker, pos);
-                } else {
+                if (isActive) animateActiveMarker(id, marker, pos);
+                else {
                     marker.setLngLat(pos);
+                    currentPosRef.current[id] = pos;
                 }
             }
         });
@@ -311,73 +322,94 @@ export default function KinMap({
         // Cleanup disconnected devices
         Object.keys(multiMarkersRef.current).forEach(id => {
             if (id !== '__history' && !liveDevices[id]) {
+                if (animationRef.current[id]) cancelAnimationFrame(animationRef.current[id]);
                 multiMarkersRef.current[id].remove();
                 delete multiMarkersRef.current[id];
+                delete currentPosRef.current[id];
             }
         });
 
     }, [liveDevices, activeDeviceId, isHistory, mapReady]);
 
-    function animateActiveMarker(marker, newTarget) {
-        if (!currentPosRef.current) {
-            currentPosRef.current = newTarget;
+    function animateActiveMarker(id, marker, newTarget) {
+        if (!currentPosRef.current[id]) {
+            currentPosRef.current[id] = newTarget;
             marker.setLngLat(newTarget);
-            mapRef.current.flyTo({ center: newTarget, zoom: 16, duration: 800 });
             trailRef.current = [newTarget];
             return;
         }
 
-        const startP = turf.point(currentPosRef.current);
+        const startP = turf.point(currentPosRef.current[id]);
         const endP = turf.point(newTarget);
         const dist = turf.distance(startP, endP);
 
-        // Only trigger update if moved significantly
+        // Don't interpolate if movement is negligible to save CPU
         if (dist < 0.001) {
-            currentPosRef.current = newTarget;
+            currentPosRef.current[id] = newTarget;
             marker.setLngLat(newTarget);
             return;
         }
 
         trailRef.current.push(newTarget);
         if (trailRef.current.length > TRAIL_LENGTH) trailRef.current.shift();
-        const trailSrc = mapRef.current.getSource('trail-source');
-        if (trailSrc) trailSrc.setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: trailRef.current } });
+
+        // We only draw trail if we have more than 1 point to avoid line-gradient error on single point
+        if (trailRef.current.length > 1) {
+            const trailSrc = mapRef.current.getSource('trail-source');
+            if (trailSrc) {
+                trailSrc.setData({
+                    type: 'Feature',
+                    geometry: { type: 'LineString', coordinates: trailRef.current }
+                });
+            }
+        }
 
         const bearing = turf.bearing(startP, endP);
-        const duration = 800;
+        const duration = 1500; // Slower, smoother interpolation 1.5s
         const startTime = performance.now();
+
+        if (animationRef.current[id]) cancelAnimationFrame(animationRef.current[id]);
 
         function animate(time) {
             const progress = Math.min((time - startTime) / duration, 1);
-            const pos = turf.destination(startP, dist * progress, bearing).geometry.coordinates;
+            // using easeOut effect
+            const easeProgress = progress * (2 - progress);
+            const pos = turf.destination(startP, dist * easeProgress, bearing).geometry.coordinates;
+
             marker.setLngLat(pos);
-            currentPosRef.current = pos;
-            mapRef.current.panTo(pos, { duration: 0 });
-            if (progress < 1) animationRef.current = requestAnimationFrame(animate);
+            currentPosRef.current[id] = pos;
+
+            // Pan nicely to track
+            if (mapRef.current.isMoving()) {
+                // If user is panning manually, don't battle them
+            } else {
+                mapRef.current.panTo(pos, { duration: 0 });
+            }
+
+            if (progress < 1) {
+                animationRef.current[id] = requestAnimationFrame(animate);
+            }
         }
-        cancelAnimationFrame(animationRef.current);
-        animationRef.current = requestAnimationFrame(animate);
+
+        animationRef.current[id] = requestAnimationFrame(animate);
     }
 
-
-
-    // ── Expose tilt control via ref ──────────────────────────────────────
+    // ── Expose tilt control ──────────────────────────────────────────────
     function handleTilt() {
         if (!mapRef.current) return;
         tiltRef.current = !tiltRef.current;
-        mapRef.current.easeTo({ pitch: tiltRef.current ? 55 : 0, duration: 400 });
+        mapRef.current.easeTo({ pitch: tiltRef.current ? 65 : 10, duration: 800 });
     }
 
     return (
-        <div style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}>
+        <div style={{ width: '100vw', height: '100vh', position: 'absolute', inset: 0, overflow: 'hidden' }}>
             <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
 
-            {/* Map Control Bar */}
             <div className="map-controls">
                 <button className="map-control-btn" title="Zoom In" onClick={() => mapRef.current?.zoomIn()}>＋</button>
                 <button className="map-control-btn" title="Zoom Out" onClick={() => mapRef.current?.zoomOut()}>－</button>
                 <div className="map-control-divider" />
-                <button className="map-control-btn" title="Reset North" onClick={() => mapRef.current?.resetNorth({ duration: 400 })}>⊕</button>
+                <button className="map-control-btn" title="Reset North" onClick={() => mapRef.current?.resetNorth({ duration: 800 })}>⊕</button>
                 <button className="map-control-btn" title="Toggle 3D Tilt" onClick={handleTilt}>◈</button>
             </div>
         </div>

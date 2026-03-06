@@ -70,26 +70,34 @@ export default function AddDeviceModal({ onClose }) {
                 .modal-overlay {
                     position: fixed; inset: 0; background: rgba(0,0,0,0.8);
                     display: flex; align-items: center; justify-content: center;
-                    z-index: 1000; backdrop-filter: blur(4px);
+                    z-index: 1000; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
                 }
                 .modal-content {
-                    background: #141720; border: 1px solid rgba(255,255,255,0.1);
-                    border-radius: 12px; padding: 24px; min-width: 320px;
-                    color: white; position: relative; text-align: center;
+                    background: var(--color-surface-elevated); 
+                    border: 1px solid var(--color-border-light);
+                    border-radius: var(--radius-md); padding: var(--spacing-6); min-width: 320px;
+                    color: var(--color-text-primary); position: relative; text-align: center;
+                    box-shadow: var(--shadow-lg);
+                }
+                .modal-content h2 {
+                    margin-bottom: var(--spacing-4);
                 }
                 .close-btn {
-                    position: absolute; top: 12px; right: 12px;
-                    background: none; border: none; color: #888;
-                    font-size: 1.2rem; cursor: pointer;
+                    position: absolute; top: var(--spacing-3); right: var(--spacing-3);
+                    background: none; border: none; color: var(--color-text-secondary);
+                    font-size: 1.5rem; cursor: pointer; transition: var(--transition-fast);
                 }
-                .close-btn:hover { color: #fff; }
+                .close-btn:hover { color: var(--color-text-primary); }
                 .primary-btn {
-                    background: #00ffcc; color: #000; border: none;
-                    padding: 8px 16px; border-radius: 6px; font-weight: bold;
-                    cursor: pointer; margin-top: 16px;
+                    background: var(--color-signal-active); color: var(--color-base); 
+                    border: none; padding: var(--spacing-2) var(--spacing-4); 
+                    border-radius: var(--radius-full); font-weight: var(--font-weight-bold);
+                    cursor: pointer; margin-top: var(--spacing-4);
+                    transition: var(--transition-fast);
                 }
-                .primary-btn:hover { background: #00ccaa; }
-                .qr-container { margin-top: 20px; }
+                .primary-btn:hover { background: #00ccaa; box-shadow: var(--shadow-glow); }
+                .qr-container { margin-top: var(--spacing-5); }
+                .qr-container p { color: var(--color-text-secondary); margin-bottom: var(--spacing-3); }
             `}</style>
         </div>
     );

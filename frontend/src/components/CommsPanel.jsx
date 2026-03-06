@@ -57,7 +57,7 @@ export default function CommsPanel({ deviceId, knownDevices = [], onSelectDevice
     const currentDevice = knownDevices.find(d => d.device_id === deviceId);
 
     return (
-        <div className="comms-panel">
+        <div className="comms-panel glass-panel">
             {/* Device selector row */}
             <div className="comms-device-row">
                 <span className="comms-panel-label">📱 Device:</span>
@@ -203,83 +203,85 @@ export default function CommsPanel({ deviceId, knownDevices = [], onSelectDevice
             <style>{`
                 .comms-panel {
                     display: flex; flex-direction: column; height: 100%;
-                    background: rgba(8,10,16,0.97); color: #e0e4ff;
-                    font-family: 'Inter', sans-serif; font-size: 0.82rem;
-                    border-radius: 12px; overflow: hidden;
+                    width: 100%; max-width: 900px; max-height: 80vh;
+                    background: var(--color-surface); color: var(--color-text-primary);
+                    font-family: var(--font-family-body); font-size: var(--text-size-sm);
+                    overflow: hidden; box-shadow: var(--shadow-xl);
                 }
                 .comms-device-row {
-                    display: flex; align-items: center; gap: 8px;
-                    padding: 10px 14px; background: rgba(255,255,255,0.04);
-                    border-bottom: 1px solid rgba(255,255,255,0.08);
+                    display: flex; align-items: center; gap: var(--spacing-2);
+                    padding: var(--spacing-3) var(--spacing-4); background: rgba(255, 255, 255, 0.02);
+                    border-bottom: 1px solid var(--color-border-light);
                     flex-wrap: wrap;
                 }
-                .comms-panel-label { color: #888; white-space: nowrap; }
+                .comms-panel-label { color: var(--color-text-secondary); white-space: nowrap; font-size: var(--text-size-xs); }
                 .comms-device-select {
-                    flex: 1; background: rgba(255,255,255,0.07); color: #e0e4ff;
-                    border: 1px solid rgba(255,255,255,0.15); border-radius: 6px;
-                    padding: 4px 8px; font-size: 0.82rem; cursor: pointer;
-                    min-width: 140px;
+                    flex: 1; background: var(--color-surface-solid); color: var(--color-text-primary);
+                    border: 1px solid var(--color-border-light); border-radius: var(--radius-sm);
+                    padding: var(--spacing-2); font-size: var(--text-size-sm); cursor: pointer;
+                    min-width: 140px; outline: none; transition: var(--transition-fast);
                 }
+                .comms-device-select:focus { border-color: var(--color-signal-active); }
                 .comms-refresh-btn {
-                    background: rgba(0,255,204,0.1); border: 1px solid rgba(0,255,204,0.25);
-                    color: #00ffcc; border-radius: 6px; padding: 4px 10px;
-                    cursor: pointer; font-size: 1rem; transition: background 0.2s;
+                    background: var(--color-surface-elevated); border: 1px solid var(--color-border-light);
+                    color: var(--color-signal-active); border-radius: var(--radius-sm); padding: 4px 10px;
+                    cursor: pointer; font-size: 1rem; transition: background var(--transition-fast);
                 }
-                .comms-refresh-btn:hover { background: rgba(0,255,204,0.2); }
+                .comms-refresh-btn:hover { background: rgba(0, 230, 184, 0.1); box-shadow: var(--shadow-glow); }
                 .comms-refresh-btn:disabled { opacity: 0.4; cursor: default; }
-                .comms-refresh-time { color: #555; font-size: 0.72rem; }
+                .comms-refresh-time { color: var(--color-text-muted); font-size: var(--text-size-xs); font-family: var(--font-family-mono); }
                 .comms-tabs {
-                    display: flex; border-bottom: 1px solid rgba(255,255,255,0.08);
+                    display: flex; border-bottom: 1px solid var(--color-border-light);
                 }
                 .comms-tab {
-                    flex: 1; padding: 10px 6px; background: none; border: none;
-                    color: #666; cursor: pointer; font-size: 0.78rem; font-weight: 600;
-                    letter-spacing: 0.03em; border-bottom: 2px solid transparent;
-                    transition: all 0.2s;
+                    flex: 1; padding: var(--spacing-3) var(--spacing-2); background: none; border: none;
+                    color: var(--color-text-secondary); cursor: pointer; font-size: var(--text-size-xs); font-weight: var(--font-weight-semibold);
+                    letter-spacing: 0.5px; border-bottom: 2px solid transparent; text-transform: uppercase;
+                    transition: var(--transition-fast);
                 }
-                .comms-tab.active { color: #00ffcc; border-bottom-color: #00ffcc; background: rgba(0,255,204,0.05); }
-                .comms-tab:hover:not(.active) { color: #aaa; background: rgba(255,255,255,0.03); }
+                .comms-tab.active { color: var(--color-signal-active); border-bottom-color: var(--color-signal-active); background: rgba(0, 230, 184, 0.05); }
+                .comms-tab:hover:not(.active) { color: var(--color-text-primary); background: rgba(255,255,255,0.03); }
                 .comms-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
                 .comms-table-wrap { flex: 1; overflow-y: auto; }
                 .comms-table { width: 100%; border-collapse: collapse; }
                 .comms-table th {
-                    position: sticky; top: 0; background: rgba(10,12,20,0.98);
-                    color: #555; font-size: 0.7rem; text-transform: uppercase;
-                    letter-spacing: 0.07em; padding: 8px 10px; text-align: left;
-                    border-bottom: 1px solid rgba(255,255,255,0.08);
+                    position: sticky; top: 0; background: var(--color-surface);
+                    color: var(--color-text-secondary); font-size: var(--text-size-xs); text-transform: uppercase;
+                    letter-spacing: 1px; padding: var(--spacing-2) var(--spacing-3); text-align: left;
+                    border-bottom: 1px solid var(--color-border-light);
                 }
                 .comms-table td {
-                    padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,0.04);
+                    padding: var(--spacing-2) var(--spacing-3); border-bottom: 1px solid rgba(255,255,255,0.04);
                     vertical-align: top; max-width: 260px;
                 }
                 .comms-table tr:hover td { background: rgba(255,255,255,0.03); }
-                .comms-body-cell { word-break: break-word; color: #b0b8d8; }
-                .comms-ts { color: #555; white-space: nowrap; font-size: 0.72rem; }
+                .comms-body-cell { word-break: break-word; color: var(--color-text-primary); }
+                .comms-ts { color: var(--color-text-secondary); white-space: nowrap; font-size: var(--text-size-xs); font-family: var(--font-family-mono); }
                 .comms-pkg {
                     background: rgba(100,100,255,0.15); color: #8888ff;
-                    padding: 1px 5px; border-radius: 4px; font-size: 0.72rem;
+                    padding: 2px 6px; border-radius: var(--radius-sm); font-size: var(--text-size-xs);
                     white-space: nowrap;
                 }
-                .sms-in td:first-child { color: #00ccff; }
-                .sms-out td:first-child { color: #aa88ff; }
-                .call-badge { padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; white-space: nowrap; }
-                .call-badge.type-missed { background: rgba(255,50,50,0.15); color: #ff5555; }
-                .call-badge.type-incoming { background: rgba(0,200,100,0.15); color: #00cc66; }
-                .call-badge.type-outgoing { background: rgba(100,100,255,0.15); color: #8888ff; }
+                .sms-in td:first-child { color: var(--color-signal-active); }
+                .sms-out td:first-child { color: var(--color-text-secondary); }
+                .call-badge { padding: 4px 8px; border-radius: var(--radius-sm); font-size: var(--text-size-xs); white-space: nowrap; font-weight: var(--font-weight-bold); }
+                .call-badge.type-missed { background: rgba(255,50,50,0.15); color: var(--color-signal-offline); }
+                .call-badge.type-incoming { background: rgba(0, 230, 184, 0.15); color: var(--color-signal-active); }
+                .call-badge.type-outgoing { background: rgba(255, 170, 0, 0.15); color: var(--color-signal-warning); }
                 .comms-empty {
                     display: flex; align-items: center; justify-content: center;
-                    height: 120px; color: #444; font-size: 0.85rem;
+                    height: 120px; color: var(--color-text-muted); font-size: var(--text-size-sm);
                 }
                 .comms-loading {
                     display: flex; align-items: center; justify-content: center;
-                    gap: 10px; height: 80px; color: #666;
+                    gap: var(--spacing-3); height: 80px; color: var(--color-text-secondary);
                 }
                 .comms-spinner {
-                    width: 18px; height: 18px; border: 2px solid rgba(0,255,204,0.3);
-                    border-top-color: #00ffcc; border-radius: 50%; animation: spin 0.8s linear infinite;
+                    width: 24px; height: 24px; border: 2px solid var(--color-border-light);
+                    border-top-color: var(--color-signal-active); border-radius: 50%; animation: spin 0.8s linear infinite;
                 }
                 @keyframes spin { to { transform: rotate(360deg); } }
-                .comms-error { color: #ff5555; padding: 16px; text-align: center; }
+                .comms-error { color: var(--color-signal-offline); padding: var(--spacing-4); text-align: center; }
             `}</style>
         </div>
     );

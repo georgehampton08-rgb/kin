@@ -17,7 +17,7 @@ export default function DeviceListPanel({ devices = [], activeDeviceId, onSelect
     }, [forceClose]);
 
     return (
-        <div className="device-list-panel" data-open={isOpen}>
+        <div className="device-list-panel glass-panel stagger-3" data-open={isOpen}>
             <div className="dlp-header">
                 <div className="dlp-title" onClick={() => setIsOpen(o => !o)} style={{ cursor: 'pointer', flex: 1, display: 'flex', alignItems: 'center' }}>
                     <span className="dlp-icon">📡</span>
@@ -65,39 +65,36 @@ export default function DeviceListPanel({ devices = [], activeDeviceId, onSelect
             <style>{`
                 .device-list-panel {
                     position: absolute;
-                    top: 24px;
+                    top: var(--spacing-5);
                     right: 72px;
                     z-index: 20;
-                    background: rgba(10, 12, 18, 0.92);
-                    backdrop-filter: blur(16px);
-                    border: 1px solid rgba(0, 255, 204, 0.2);
-                    border-radius: 12px;
-                    min-width: 240px;
-                    max-width: 300px;
-                    box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 1px rgba(0,255,204,0.3);
+                    min-width: 260px;
+                    max-width: 320px;
+                    display: flex;
+                    flex-direction: column;
                     overflow: hidden;
-                    transition: box-shadow 0.3s ease;
+                    transition: box-shadow var(--transition-normal);
                 }
                 .device-list-panel:hover {
-                    box-shadow: 0 8px 48px rgba(0,0,0,0.6), 0 0 12px rgba(0,255,204,0.15);
+                    box-shadow: var(--shadow-lg), var(--shadow-glow);
                 }
                 @media (max-width: 768px) {
                     .device-list-panel {
-                        top: 12px;
-                        right: 12px;
+                        top: var(--spacing-3);
+                        right: var(--spacing-3);
                         left: auto;
                         min-width: 200px;
                         max-width: 80vw;
-                        z-index: 25; /* Ensure above map controls */
+                        z-index: 25;
                     }
                 }
                 .dlp-header {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    padding: 12px 16px;
+                    padding: var(--spacing-3) var(--spacing-4);
                     cursor: pointer;
-                    border-bottom: 1px solid rgba(255,255,255,0.07);
+                    border-bottom: 1px solid var(--color-border-light);
                     user-select: none;
                 }
                 .dlp-header:hover { background: rgba(0,255,204,0.04); }

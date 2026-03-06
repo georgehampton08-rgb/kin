@@ -218,7 +218,7 @@ export default function App() {
             <Toaster position="top-right" />
 
             {/* ── Header ──────────────────────────────────────────────────── */}
-            <header className="hud-header">
+            <header className="floating-header glass-panel stagger-1">
                 <div className="hud-title">
                     <h1>Kin Dashboard</h1>
                     <span className="subtitle">
@@ -294,7 +294,7 @@ export default function App() {
 
                 {/* Comms Panel Overlay */}
                 {mode === 'comms' && (
-                    <div className="comms-overlay">
+                    <div className="comms-overlay stagger-3">
                         <CommsPanel
                             deviceId={deviceId}
                             knownDevices={knownDevices}
@@ -332,9 +332,9 @@ export default function App() {
 
                 {/* Live Telemetry HUD */}
                 {mode === 'live' && lastLocation && (
-                    <div className="telemetry-overlay">
+                    <div className="telemetry-overlay stagger-2">
                         <DeviceStatusPanel deviceStatus={deviceStatus} />
-                        <div className="telemetry-bar">
+                        <div className="telemetry-bar glass-panel">
                             <div className="stat">
                                 <span className="label">SPD</span>
                                 <span className="value">{(lastLocation.speed * 2.23694).toFixed(1)} <small>mph</small></span>
@@ -349,7 +349,7 @@ export default function App() {
 
                 {/* History Scrubber — bottom bar */}
                 {mode === 'history' && !loading && coordinates.length > 0 && (
-                    <div className="history-panel">
+                    <div className="history-panel glass-panel stagger-2">
                         <div className="scrub-controls">
                             <div className="scrub-meta">
                                 <div>

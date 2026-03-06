@@ -173,13 +173,14 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                     position: absolute;
                     top: 0;
                     right: -320px;
-                    width: 300px;
+                    width: 320px;
                     height: 100%;
-                    background: rgba(10, 15, 30, 0.95);
-                    backdrop-filter: blur(10px);
-                    border-left: 1px solid rgba(0, 255, 204, 0.2);
-                    box-shadow: -4px 0 15px rgba(0,0,0,0.5);
-                    transition: right 0.3s ease;
+                    background: var(--color-surface);
+                    backdrop-filter: blur(16px);
+                    -webkit-backdrop-filter: blur(16px);
+                    border-left: 1px solid var(--color-border-light);
+                    box-shadow: -8px 0 32px rgba(0,0,0,0.6);
+                    transition: right var(--transition-normal);
                     z-index: 1000;
                     display: flex;
                     flex-direction: column;
@@ -191,81 +192,84 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    padding: 16px 20px;
-                    border-bottom: 1px solid rgba(255,255,255,0.05);
+                    padding: var(--spacing-4) var(--spacing-5);
+                    border-bottom: 1px solid var(--color-border-light);
                 }
                 .sd-header h2 {
                     margin: 0;
-                    font-size: 1.1rem;
-                    color: #fff;
+                    font-size: var(--text-size-base);
+                    color: var(--color-text-primary);
                     letter-spacing: 1px;
                 }
                 .sd-close {
                     background: none;
                     border: none;
-                    color: #8b92a5;
+                    color: var(--color-text-secondary);
                     font-size: 1.2rem;
                     cursor: pointer;
+                    transition: var(--transition-fast);
                 }
-                .sd-close:hover { color: #fff; }
+                .sd-close:hover { color: var(--color-text-primary); }
                 
                 .sd-content {
-                    padding: 20px;
+                    padding: var(--spacing-5);
                     overflow-y: auto;
                     flex: 1;
                 }
                 
                 .sd-section {
-                    margin-bottom: 30px;
+                    margin-bottom: var(--spacing-6);
                 }
                 .sd-section h3 {
                     margin-top: 0;
-                    margin-bottom: 15px;
-                    font-size: 0.85rem;
+                    margin-bottom: var(--spacing-3);
+                    font-size: var(--text-size-xs);
                     text-transform: uppercase;
-                    color: #00ffcc;
-                    letter-spacing: 1.5px;
-                    border-bottom: 1px dashed rgba(0,255,204,0.3);
-                    padding-bottom: 5px;
+                    color: var(--color-signal-active);
+                    letter-spacing: 2px;
+                    border-bottom: 1px dashed rgba(0, 230, 184, 0.3);
+                    padding-bottom: var(--spacing-2);
                 }
                 
                 .sd-form {
                     display: flex;
                     flex-direction: column;
-                    gap: 10px;
+                    gap: var(--spacing-2);
                 }
                 .sd-form label {
-                    font-size: 0.75rem;
-                    color: #a0a6cc;
+                    font-size: var(--text-size-xs);
+                    color: var(--color-text-secondary);
                     margin-bottom: -5px;
                 }
                 .sd-form input {
-                    background: rgba(0,0,0,0.4);
-                    border: 1px solid rgba(255,255,255,0.1);
-                    color: white;
-                    padding: 8px 10px;
-                    border-radius: 4px;
+                    background: var(--color-surface-solid);
+                    border: 1px solid var(--color-border-light);
+                    color: var(--color-text-primary);
+                    padding: 8px 12px;
+                    border-radius: var(--radius-sm);
                     font-family: inherit;
+                    transition: var(--transition-fast);
                 }
                 .sd-form input:focus {
                     outline: none;
-                    border-color: rgba(0,255,204,0.5);
-                    box-shadow: 0 0 5px rgba(0,255,204,0.2);
+                    border-color: var(--color-signal-active);
+                    box-shadow: 0 0 5px rgba(0, 230, 184, 0.2);
                 }
                 .sd-form button {
-                    margin-top: 10px;
-                    background: rgba(0, 255, 204, 0.1);
-                    color: #00ffcc;
-                    border: 1px solid rgba(0, 255, 204, 0.3);
+                    margin-top: var(--spacing-2);
+                    background: var(--color-surface-elevated);
+                    color: var(--color-signal-active);
+                    border: 1px solid var(--color-border-light);
                     padding: 10px;
-                    border-radius: 4px;
+                    border-radius: var(--radius-sm);
                     cursor: pointer;
-                    font-weight: 600;
-                    transition: all 0.2s;
+                    font-weight: var(--font-weight-semibold);
+                    transition: var(--transition-fast);
                 }
                 .sd-form button:hover:not(:disabled) {
-                    background: rgba(0, 255, 204, 0.2);
-                    box-shadow: 0 0 10px rgba(0,255,204,0.2);
+                    background: var(--color-signal-active);
+                    color: var(--color-base);
+                    box-shadow: var(--shadow-glow);
                 }
                 .sd-form button:disabled {
                     opacity: 0.5;
@@ -275,38 +279,39 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                 .btn-logout {
                     width: 100%;
                     background: rgba(255, 51, 51, 0.1);
-                    color: #ff3333;
+                    color: var(--color-signal-offline);
                     border: 1px solid rgba(255, 51, 51, 0.3);
                     padding: 10px;
-                    border-radius: 4px;
+                    border-radius: var(--radius-sm);
                     cursor: pointer;
-                    font-weight: 600;
-                    transition: all 0.2s;
+                    font-weight: var(--font-weight-semibold);
+                    transition: var(--transition-fast);
                 }
                 .btn-logout:hover {
                     background: rgba(255, 51, 51, 0.2);
-                    box-shadow: 0 0 10px rgba(255,51,51,0.2);
+                    box-shadow: 0 0 10px rgba(255, 51, 51, 0.2);
                 }
 
                 .sd-profile {
                     display: flex;
                     align-items: center;
-                    gap: 14px;
-                    padding-bottom: 16px;
-                    border-bottom: 1px solid rgba(255,255,255,0.08);
+                    gap: var(--spacing-3);
+                    padding-bottom: var(--spacing-4);
+                    border-bottom: 1px solid var(--color-border-light);
                 }
                 .sd-avatar {
                     width: 48px;
                     height: 48px;
                     border-radius: 50%;
-                    background: linear-gradient(135deg, #00ffcc, #0088ff);
+                    background: linear-gradient(135deg, var(--color-signal-active), #0088ff);
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     font-size: 1.1rem;
-                    font-weight: 700;
-                    color: #000;
+                    font-weight: var(--font-weight-bold);
+                    color: var(--color-base);
                     flex-shrink: 0;
+                    box-shadow: var(--shadow-sm);
                 }
                 .sd-profile-info {
                     display: flex;
@@ -314,17 +319,17 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                     gap: 2px;
                 }
                 .sd-name {
-                    font-size: 1rem;
-                    font-weight: 600;
-                    color: #fff;
+                    font-size: var(--text-size-base);
+                    font-weight: var(--font-weight-semibold);
+                    color: var(--color-text-primary);
                 }
                 .sd-email {
-                    font-size: 0.8rem;
-                    color: #8892b0;
+                    font-size: var(--text-size-sm);
+                    color: var(--color-text-secondary);
                 }
                 .sd-role {
-                    font-size: 0.75rem;
-                    color: #00ffcc;
+                    font-size: var(--text-size-xs);
+                    color: var(--color-signal-active);
                     text-transform: uppercase;
                     letter-spacing: 0.05em;
                 }
@@ -335,7 +340,7 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                     font-size: 1.1rem;
                     margin-left: auto;
                     opacity: 0.6;
-                    transition: opacity 0.2s;
+                    transition: opacity var(--transition-fast);
                 }
                 .sd-edit-btn:hover {
                     opacity: 1;
