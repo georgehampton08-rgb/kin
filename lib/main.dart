@@ -6,7 +6,7 @@ import 'providers/location_provider.dart';
 import 'services/location_service.dart';
 import 'services/comms_service.dart';
 import 'screens/onboarding_screen.dart';
-import 'screens/debug_screen.dart';
+
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -86,59 +86,23 @@ class LocationScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kin Location'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.bug_report),
-            tooltip: 'Debug SQLite Queue',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const DebugScreen()),
-              );
-            },
-          ),
-        ],
-      ),
+      backgroundColor: Colors.white,
       body: Center(
-        child: Consumer<LocationProvider>(
-          builder: (context, locationProvider, child) {
-            final location = locationProvider.currentLocation;
-            if (location == null) {
-              return const Text('Fetching background location...');
-            }
-
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.location_on, size: 50, color: Colors.deepPurple),
-                const SizedBox(height: 20),
-                Text(
-                  'Latitude: ${location.coords.latitude}',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                Text(
-                  'Longitude: ${location.coords.longitude}',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                Text(
-                  'Accuracy: ${location.coords.accuracy} m',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Moving: ${location.isMoving}',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Timestamp: ${location.timestamp}',
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
-              ],
-            );
-          },
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.check_circle_outline, size: 80, color: Colors.green),
+            const SizedBox(height: 24),
+            const Text(
+              'Configuration Complete',
+              style: TextStyle(color: Colors.black87, fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'You can now close this app.',
+              style: TextStyle(color: Colors.black54, fontSize: 16),
+            ),
+          ],
         ),
       ),
     );
