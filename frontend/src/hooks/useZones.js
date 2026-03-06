@@ -7,12 +7,14 @@ import { fetchWithAuth } from '../utils/api';
  * Fetches all geofence zones from the backend and returns:
  *  - zones: raw zone feature array
  *  - zonePolygons: Turf circle GeoJSON features for each zone
+ * Only fetches when `user` is authenticated.
  */
-export function useZones() {
+export function useZones(user) {
     const [zones, setZones] = useState([]);
     const [zonePolygons, setZonePolygons] = useState([]);
 
     useEffect(() => {
+        if (!user) return; // Don't fetch without auth — avoids 401
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
         fetchWithAuth(`${apiUrl}/api/v1/zones/`)
             .then(r => r.json())
@@ -31,7 +33,7 @@ export function useZones() {
                 setZonePolygons(polygons);
             })
             .catch(e => console.error('[Zones] Failed to fetch zones:', e));
-    }, []);
+    }, [user]); // Re-run when user logs in
 
     return { zones, zonePolygons };
 }

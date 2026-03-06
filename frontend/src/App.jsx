@@ -64,8 +64,11 @@ export default function App() {
                         unread_sms: d.unread_sms,
                         missed_calls: d.missed_calls,
                         unread_notifs: d.unread_notifs,
-                        status: 'OFFLINE', // Initial status before WS connection
-                        lastSeen: d.paired_at
+                        last_lat: d.last_lat,
+                        last_lon: d.last_lon,
+                        last_seen_at: d.last_seen_at,
+                        status: d.last_seen_at ? 'STALE' : 'OFFLINE',
+                        lastSeen: d.last_seen_at || d.paired_at
                     })));
                 }
             } catch (err) {
@@ -79,7 +82,7 @@ export default function App() {
 
     // Data hooks
     const { features, coordinates, loading, error, fetchHistory } = useHistoryScrub(deviceId);
-    const { zones, zonePolygons } = useZones();
+    const { zones, zonePolygons } = useZones(user);
 
     const handleDeviceUpdate = useCallback((id, loc, stat, devStat) => {
         setDeviceStates(prev => {
