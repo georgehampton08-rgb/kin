@@ -10,7 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class CommsService {
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
-  static StreamSubscription<ServiceNotificationEvent>? _notificationSubscription;
+  static StreamSubscription? _notificationSubscription;
   static Timer? _syncTimer;
 
   static Future<void> init() async {
