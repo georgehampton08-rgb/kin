@@ -56,7 +56,7 @@ export default function App() {
                 const res = await fetchWithAuth(`${apiUrl}/api/v1/devices/`);
                 if (res.ok) {
                     const data = await res.json();
-                    setKnownDevices(data.devices.map(d => ({
+                    const mappedDevices = data.devices.map(d => ({
                         device_id: d.device_id,
                         nickname: d.nickname,
                         app_version: d.app_version,
@@ -69,7 +69,23 @@ export default function App() {
                         last_seen_at: d.last_seen_at,
                         status: d.last_seen_at ? 'STALE' : 'OFFLINE',
                         lastSeen: d.last_seen_at || d.paired_at
-                    })));
+                    }));
+                    setKnownDevices(mappedDevices);
+
+                    // Pre-seed the map from DB last known coords
+                    setDeviceStates(prev => {
+                        const next = { ...prev };
+                        mappedDevices.forEach(d => {
+                            if (d.last_lat && d.last_lon && !next[d.device_id]?.lastLocation) {
+                                next[d.device_id] = {
+                                    lastLocation: { lat: d.last_lat, lon: d.last_lon, speed: 0, battery: null },
+                                    status: d.status,
+                                    deviceStatus: null,
+                                };
+                            }
+                        });
+                        return next;
+                    });
                 }
             } catch (err) {
                 console.error("Failed to fetch devices:", err);
@@ -87,7 +103,6 @@ export default function App() {
     const handleDeviceUpdate = useCallback((id, loc, stat, devStat) => {
         setDeviceStates(prev => {
             const existing = prev[id] || {};
-            // avoid re-renders if no change
             if (existing.lastLocation === loc && existing.status === stat && existing.deviceStatus === devStat) {
                 return prev;
             }
@@ -103,7 +118,7 @@ export default function App() {
             if (!existing) return prev;
 
             const newStatus = devStat?.status || (stat === 'connected' ? 'ONLINE' : stat === 'connecting' ? 'STALE' : 'OFFLINE');
-            if (existing.status === newStatus && existing.lastSeen === devStat?.lastSeen) return prev; // optimize
+            if (existing.status === newStatus && existing.lastSeen === devStat?.lastSeen) return prev;
 
             const updated = {
                 ...existing,
@@ -111,10 +126,20 @@ export default function App() {
                 battery: devStat?.battery ?? loc?.battery ?? existing.battery,
                 gpsAccuracy: devStat?.gpsAccuracy ?? existing.gpsAccuracy,
                 lastSeen: devStat?.lastSeen ?? (loc ? new Date().toISOString() : existing.lastSeen),
+                // Live telemetry data
+                tripStatus: devStat?.tripStatus ?? existing.tripStatus,
+                speed: loc?.speed ?? existing.speed,
+                last_lat: loc?.lat ?? existing.last_lat,
+                last_lon: loc?.lon ?? existing.last_lon,
             };
             return prev.map(d => d.device_id === id ? updated : d);
         });
     }, []);
+
+    const handleDeleteDevice = useCallback((deletedId) => {
+        setKnownDevices(prev => prev.filter(d => d.device_id !== deletedId));
+        if (deviceId === deletedId) setDeviceId('');
+    }, [deviceId]);
 
     const selectedState = deviceStates[deviceId] || {};
     const lastLocation = selectedState.lastLocation;
@@ -276,6 +301,7 @@ export default function App() {
                     activeDeviceId={deviceId}
                     onSelectDevice={id => setDeviceId(id)}
                     forceClose={sidebarOpen}
+                    onDeleteDevice={handleDeleteDevice}
                 />
 
                 {/* Global Settings Drawer */}

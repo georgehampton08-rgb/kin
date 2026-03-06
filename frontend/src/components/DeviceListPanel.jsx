@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 
-export default function DeviceListPanel({ devices = [], activeDeviceId, onSelectDevice, forceClose }) {
+export default function DeviceListPanel({ devices = [], activeDeviceId, onSelectDevice, forceClose, onDeleteDevice }) {
     // Default closed on mobile screens to save space
     const [isOpen, setIsOpen] = useState(() => {
         if (typeof window !== 'undefined') {
@@ -43,8 +43,9 @@ export default function DeviceListPanel({ devices = [], activeDeviceId, onSelect
                                 isActive={dev.device_id === activeDeviceId}
                                 onClick={() => {
                                     onSelectDevice(dev.device_id);
-                                    if (window.innerWidth <= 768) setIsOpen(false); // auto-close on mobile
+                                    if (window.innerWidth <= 768) setIsOpen(false);
                                 }}
+                                onDelete={onDeleteDevice}
                             />
                         ))
                     )}
@@ -146,14 +147,28 @@ export default function DeviceListPanel({ devices = [], activeDeviceId, onSelect
 
 import { fetchWithAuth } from '../utils/api';
 
-function DeviceCard({ device, isActive, onClick }) {
+function DeviceCard({ device, isActive, onClick, onDelete }) {
     const { device_id, status = 'UNKNOWN', battery, lastSeen, gpsAccuracy,
         nickname, app_version, os_info, unread_sms, missed_calls, unread_notifs,
-        last_lat, last_lon, last_seen_at } = device;
+        last_lat, last_lon, last_seen_at, tripStatus, speed } = device;
 
     const [isEditingName, setIsEditingName] = useState(false);
     const [editNameValue, setEditNameValue] = useState(nickname || '');
     const [displayName, setDisplayName] = useState(nickname);
+    const [confirmDelete, setConfirmDelete] = useState(false);
+
+    // Derive activity state from tripStatus or speed
+    const activityInfo = (() => {
+        if (tripStatus === 'OPEN') {
+            const spd = speed ?? 0;
+            if (spd > 8.9) return { label: 'DRIVING', icon: '🚗', color: '#ff9900' };
+            if (spd > 1.4) return { label: 'WALKING', icon: '🚶', color: '#00ccff' };
+            return { label: 'MOVING', icon: '📍', color: '#00ffcc' };
+        }
+        if (status === 'ONLINE') return { label: 'IDLE', icon: '🔵', color: '#4488ff' };
+        if (status === 'STALE') return { label: 'STALE', icon: '🟡', color: '#ffaa00' };
+        return { label: 'OFFLINE', icon: '⚫', color: '#666' };
+    })();
 
     const statusColor = status === 'ONLINE' ? '#00ffcc'
         : status === 'STALE' ? '#ffaa00'
@@ -179,6 +194,18 @@ function DeviceCard({ device, isActive, onClick }) {
             }
         } catch (err) {
             console.error("Failed to update nickname:", err);
+        }
+    };
+
+    const handleDelete = async (e) => {
+        e.stopPropagation();
+        if (!confirmDelete) { setConfirmDelete(true); setTimeout(() => setConfirmDelete(false), 3000); return; }
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const res = await fetchWithAuth(`${apiUrl}/api/v1/devices/${device_id}`, { method: 'DELETE' });
+            if (res.ok && onDelete) onDelete(device_id);
+        } catch (err) {
+            console.error('Failed to delete device:', err);
         }
     };
 
@@ -217,7 +244,10 @@ function DeviceCard({ device, isActive, onClick }) {
                     </div>
 
                     <div className="dc-meta">
-                        <span style={{ color: statusColor }}>{status}</span>
+                        <span style={{ color: activityInfo.color }}>{activityInfo.icon} {activityInfo.label}</span>
+                        {speed != null && speed > 0.5 && (
+                            <span style={{ color: '#ffaa00' }}>⚡ {(speed * 2.237).toFixed(1)} mph</span>
+                        )}
                         {battery != null && (
                             <span style={{ color: batteryColor }}>🔋 {battery.toFixed(0)}%</span>
                         )}
@@ -232,11 +262,16 @@ function DeviceCard({ device, isActive, onClick }) {
                     )}
                 </div>
 
-                {/* Comms Badges */}
+                {/* Badges + Delete */}
                 <div className="dc-badges">
                     {unread_notifs > 0 && <span className="dc-badge notif" title="Unread Notifications">🔔 {unread_notifs}</span>}
                     {unread_sms > 0 && <span className="dc-badge sms" title="Unread SMS">💬 {unread_sms}</span>}
                     {missed_calls > 0 && <span className="dc-badge call" title="Missed Calls">📞 {missed_calls}</span>}
+                    <button
+                        className={`dc-delete-btn ${confirmDelete ? 'confirm' : ''}`}
+                        onClick={handleDelete}
+                        title={confirmDelete ? 'Click again to confirm delete' : 'Remove device'}
+                    >{confirmDelete ? '⚠️' : '🗑'}</button>
                 </div>
             </div>
 
@@ -403,6 +438,19 @@ function DeviceCard({ device, isActive, onClick }) {
                     flex-direction: column;
                     align-items: flex-start;
                 }
+                .dc-delete-btn {
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    font-size: 0.85rem;
+                    opacity: 0.4;
+                    transition: all 0.2s;
+                    padding: 2px 4px;
+                    border-radius: 4px;
+                }
+                .dc-delete-btn:hover { opacity: 1; background: rgba(255,50,50,0.2); }
+                .dc-delete-btn.confirm { opacity: 1; background: rgba(255,150,0,0.2); animation: pulse 0.5s infinite alternate; }
+                @keyframes pulse { from { background: rgba(255,150,0,0.2); } to { background: rgba(255,150,0,0.4); } }
             `}</style>
         </div>
     );

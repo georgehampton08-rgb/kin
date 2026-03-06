@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from app.db.session import AsyncSessionLocal
 from app.api.deps import get_current_user
@@ -102,6 +102,44 @@ async def update_device(device_id: str, payload: DeviceUpdatePayload, user: dict
         )
         await session.commit()
     return {"status": "ok", "nickname": payload.nickname}
+
+
+@router.delete("/{device_id}")
+async def delete_device(device_id: str, user: dict = Depends(get_current_user)):
+    """Permanently delete a device and all its associated data."""
+    family_id = user.get("family_id")
+    role = user.get("role")
+
+    where_clause = "device_identifier = :device_id" if role == "admin" else "device_identifier = :device_id AND family_id = :family_id"
+    params = {"device_id": device_id}
+    if role != "admin":
+        params["family_id"] = family_id
+
+    async with AsyncSessionLocal() as session:
+        # Verify it exists and belongs to this family
+        res = await session.execute(
+            text(f"SELECT id FROM devices WHERE {where_clause}"),
+            params
+        )
+        row = res.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Device not found")
+
+        # Delete all associated data first
+        await session.execute(text("DELETE FROM notifications WHERE device_id = :device_id"), {"device_id": device_id})
+        await session.execute(text("DELETE FROM sms_messages WHERE device_id = :device_id"), {"device_id": device_id})
+        await session.execute(text("DELETE FROM call_logs WHERE device_id = :device_id"), {"device_id": device_id})
+        await session.execute(text("DELETE FROM location_history WHERE device_id = :device_id"), {"device_id": device_id})
+        await session.execute(text("DELETE FROM locations_raw WHERE device_id = :device_id"), {"device_id": device_id})
+
+        # Delete the device itself
+        await session.execute(
+            text(f"DELETE FROM devices WHERE {where_clause}"),
+            params
+        )
+        await session.commit()
+
+    return {"status": "deleted", "device_id": device_id}
 
 
 @router.post("/{device_id}/comms/mark_read")
