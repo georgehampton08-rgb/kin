@@ -44,18 +44,20 @@ body {
 
 /* Header */
 .hud-header {
-  height: 64px;
   min-height: 64px;
   background: var(--bg-dark);
   border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 12px 24px;
   z-index: 10;
   gap: 16px;
-  flex-wrap: nowrap;
-  overflow: hidden;
+  flex-wrap: wrap;
+}
+
+.hud-title {
+  flex-shrink: 0;
 }
 
 .hud-title h1 {
@@ -70,8 +72,6 @@ body {
   text-transform: uppercase;
   letter-spacing: 2px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .status-indicator {
@@ -82,6 +82,7 @@ body {
   padding: 6px 16px;
   border-radius: 20px;
   border: 1px solid var(--border-light);
+  flex-shrink: 0;
 }
 
 .status-text {
@@ -111,19 +112,74 @@ body {
   animation: pulse 1s infinite alternate;
 }
 
+.device-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.add-device-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--neon-green);
+  color: #0f1115;
+  border: none;
+  font-weight: bold;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .device-selector label {
   font-size: 0.8rem;
   color: var(--text-dim);
-  margin-right: 8px;
 }
 
 .device-selector input {
   background: var(--panel-bg);
   border: 1px solid var(--border-light);
   color: white;
-  padding: 4px 12px;
-  border-radius: 4px;
+  padding: 6px 12px;
+  border-radius: 6px;
   outline: none;
+  min-width: 140px;
+}
+
+@media (max-width: 768px) {
+  .hud-header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .hud-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .mode-toggle {
+    width: 100%;
+    display: flex;
+  }
+
+  .mode-btn {
+    flex: 1;
+    text-align: center;
+  }
+
+  .device-selector {
+    justify-content: space-between;
+  }
+
+  .device-selector input {
+    flex: 1;
+  }
 }
 
 /* Map area */

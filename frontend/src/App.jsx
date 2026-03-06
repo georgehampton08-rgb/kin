@@ -185,7 +185,7 @@ export default function App() {
                     <button className="add-device-btn" onClick={() => setIsAddCardOpen(true)}>+</button>
                     <label>Target ID:</label>
                     <input id="device-id-input" value={deviceId} onChange={e => setDeviceId(e.target.value)} placeholder="Enter device ID" />
-                    <button className="mode-btn" onClick={logout} style={{ marginLeft: '12px' }}>Logout</button>
+                    <button className="mode-btn" onClick={logout}>Logout</button>
                 </div>
             </header>
 
