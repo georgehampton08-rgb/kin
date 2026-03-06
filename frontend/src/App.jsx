@@ -242,6 +242,7 @@ export default function App() {
                     devices={knownDevices}
                     activeDeviceId={deviceId}
                     onSelectDevice={id => setDeviceId(id)}
+                    forceClose={sidebarOpen}
                 />
 
                 {/* Zone Legend */}

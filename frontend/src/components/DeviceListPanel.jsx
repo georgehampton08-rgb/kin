@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 
-export default function DeviceListPanel({ devices = [], activeDeviceId, onSelectDevice }) {
+export default function DeviceListPanel({ devices = [], activeDeviceId, onSelectDevice, forceClose }) {
     // Default closed on mobile screens to save space
     const [isOpen, setIsOpen] = useState(() => {
         if (typeof window !== 'undefined') {
@@ -9,6 +9,12 @@ export default function DeviceListPanel({ devices = [], activeDeviceId, onSelect
         }
         return true;
     });
+
+    useEffect(() => {
+        if (forceClose && typeof window !== 'undefined' && window.innerWidth <= 768) {
+            setIsOpen(false);
+        }
+    }, [forceClose]);
 
     return (
         <div className="device-list-panel" data-open={isOpen}>
