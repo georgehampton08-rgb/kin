@@ -65,6 +65,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> with WidgetsBinding
       appBar: AppBar(
         title: const Text('Welcome to Kin'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        // Prevent Back button from closing app during onboarding
+        automaticallyImplyLeading: false,
       ),
       body: PageView(
         controller: _pageController,
@@ -113,29 +115,39 @@ class _OnboardingScreenState extends State<OnboardingScreen> with WidgetsBinding
           const SizedBox(height: 24),
           Text('Communications Tracking', style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
           const SizedBox(height: 16),
-          Text('To fully monitor device activity, we need access to SMS, Call Logs, and Notifications.', style: Theme.of(context).textTheme.bodyLarge, textAlign: TextAlign.center),
+          Text(
+            'To fully monitor device activity, we need access to SMS, Call Logs, and Notifications.\n\n'
+            'Tap the button below, enable the permission in the system screen, then press system Back to return here.',
+            style: Theme.of(context).textTheme.bodyLarge,
+            textAlign: TextAlign.center,
+          ),
           const Spacer(),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () async {
-                await [
-                  Permission.sms,
-                  Permission.phone,
-                ].request();
+                // Request normal runtime permissions (safe inline await)
+                await [Permission.sms, Permission.phone].request();
 
-                // This opens Android Settings. The user must grant it and hit 'Back' manually.
-                await NotificationListenerService.requestPermission();
+                // *** KEY FIX: Do NOT await requestPermission() ***
+                // Awaiting it launches an Android activity that, when the user
+                // presses Back, collapses the entire Flutter back-stack and
+                // closes the app. Fire-and-forget lets Android handle it; our
+                // WidgetsBindingObserver.didChangeAppLifecycleState will detect
+                // the app resuming so we can react if we need to.
+                // ignore: unawaited_futures
+                NotificationListenerService.requestPermission();
               },
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.all(16),
                 backgroundColor: Colors.orange,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('1. Grant Access (Opens Settings)', style: TextStyle(fontSize: 18)),
+              child: const Text('Grant Permissions (Opens Settings)', style: TextStyle(fontSize: 18)),
             ),
           ),
           const SizedBox(height: 16),
+          // Always enabled — user can skip and grant later from Android Settings
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -150,8 +162,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> with WidgetsBinding
                 backgroundColor: Colors.deepPurple,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('2. I have granted access ->', style: TextStyle(fontSize: 18)),
+              child: const Text('Continue →', style: TextStyle(fontSize: 18)),
             ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'You can grant notification access later via Android Settings.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
         ],
