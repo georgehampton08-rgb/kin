@@ -43,12 +43,17 @@ export async function fetchWithAuth(url, options = {}) {
                     localStorage.removeItem('access_token');
                     localStorage.removeItem('refresh_token');
                     localStorage.removeItem('user_info');
-                    // Force a reload to let AuthContext catch the null token
                     window.location.reload();
                 }
             } catch (err) {
                 console.error('Token refresh failed', err);
             }
+        } else {
+            // No refresh token available, force logout
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user_info');
+            window.location.reload();
         }
     }
 
