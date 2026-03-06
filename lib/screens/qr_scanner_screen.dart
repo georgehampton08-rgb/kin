@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:device_info_plus/device_info_plus.dart';
-import 'dart:io';
-import '../main.dart'; 
+import '../main.dart';
+import '../services/device_identity_service.dart';
 
 class QRScannerScreen extends StatefulWidget {
   const QRScannerScreen({super.key});
@@ -22,15 +21,8 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   final storage = const FlutterSecureStorage();
 
   Future<String> _getDeviceIdentifier() async {
-    final deviceInfo = DeviceInfoPlugin();
-    if (Platform.isAndroid) {
-      final androidInfo = await deviceInfo.androidInfo;
-      return androidInfo.id; // Unique hardware ID
-    } else if (Platform.isIOS) {
-      final iosInfo = await deviceInfo.iosInfo;
-      return iosInfo.identifierForVendor ?? 'unknown_ios';
-    }
-    return 'unknown_device';
+    // Use the permanent hardware fingerprint from AccountManager
+    return DeviceIdentityService.getHardwareId();
   }
 
   /// Validate QR payload fields before storing any values.
@@ -113,16 +105,32 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       final mqttPassword = resData['mqtt_config']['password'];
       final deviceId = resData['device_id'];
 
+      // ── Write to FlutterSecureStorage (used by existing runtime code) ──
       await storage.write(key: 'api_url', value: apiUrl);
       await storage.write(key: 'device_id', value: deviceId);
       await storage.write(key: 'access_token', value: accessToken);
       await storage.write(key: 'refresh_token', value: refreshToken);
-      await storage.write(key: 'mqtt_host', value: mqttHost);
-      await storage.write(key: 'mqtt_port', value: mqttPort.toString());
+      await storage.write(key: 'mqtt_host', value: mqttHost?.toString());
+      await storage.write(key: 'mqtt_port', value: mqttPort?.toString());
       await storage.write(key: 'mqtt_username', value: mqttUsername);
       if (mqttPassword != "(use existing credentials)") {
         await storage.write(key: 'mqtt_password', value: mqttPassword);
       }
+
+      // ── Also write to AccountManager (survives reinstall) ──────────────
+      final hwId = await DeviceIdentityService.getHardwareId();
+      await DeviceIdentityService.saveCredentials(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        deviceId: deviceId,
+        apiUrl: apiUrl,
+        hardwareId: hwId,
+        mqttHost: mqttHost?.toString(),
+        mqttPort: mqttPort?.toString(),
+        mqttUsername: mqttUsername,
+        mqttPassword: mqttPassword != "(use existing credentials)" ? mqttPassword : null,
+      );
+      debugPrint('[QRScanner] Credentials saved to AccountManager. hwId=$hwId');
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -145,7 +153,10 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pair Device')),
+      appBar: AppBar(
+        title: const Text('Pair Device'),
+        automaticallyImplyLeading: false, // no back — child cannot abort pairing
+      ),
       body: Stack(
         children: [
           MobileScanner(
