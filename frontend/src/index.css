@@ -239,43 +239,43 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  --marker-color: var(--neon-green);
+  /* default */
 }
 
 .marker-dot {
   width: 14px;
   height: 14px;
-  background-color: var(--neon-green);
+  background-color: var(--marker-color);
   border-radius: 50%;
   position: absolute;
   z-index: 3;
-  box-shadow:
-    0 0 6px rgba(0, 255, 204, 1),
-    0 0 14px rgba(0, 255, 204, 0.8),
-    0 0 28px rgba(0, 255, 204, 0.4);
-  animation: markerGlow 3s ease-in-out infinite;
+  box-shadow: 0 0 10px var(--marker-color);
 }
 
 .marker-pulse {
   width: 40px;
   height: 40px;
-  background-color: rgba(0, 255, 204, 0.18);
-  border: 1.5px solid rgba(0, 255, 204, 0.5);
+  background-color: transparent;
   border-radius: 50%;
   position: absolute;
   z-index: 2;
+  border: 1.5px solid var(--marker-color);
   animation: radarPulse 2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  opacity: 0.5;
 }
 
 .marker-pulse-slow {
   width: 40px;
   height: 40px;
   background: transparent;
-  border: 1px solid rgba(0, 255, 204, 0.25);
+  border: 1px solid var(--marker-color);
   border-radius: 50%;
   position: absolute;
   z-index: 1;
   animation: radarPulse 2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   animation-delay: 0.7s;
+  opacity: 0.25;
 }
 
 /* Animations */

@@ -18,9 +18,14 @@ class MarkReadPayload(BaseModel):
 async def list_devices(user: dict = Depends(get_current_user)):
     """Returns all paired devices for the current family, with unread counters."""
     family_id = user.get("family_id")
+    role = user.get("role")
+    
+    where_clause = "d.is_active = true" if role == "admin" else "d.is_active = true AND d.family_id = :family_id"
+    params = {} if role == "admin" else {"family_id": family_id}
+    
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            text("""
+            text(f"""
                 SELECT d.device_identifier as device_id,
                        d.is_active,
                        d.paired_at,
@@ -43,12 +48,15 @@ async def list_devices(user: dict = Depends(get_current_user)):
                            (SELECT COUNT(n.id) FROM notifications n
                             WHERE n.device_id = d.device_identifier AND n.is_read = false),
                            0
-                       ) as unread_notifs
+                       ) as unread_notifs,
+                       d.last_lat,
+                       d.last_lon,
+                       d.last_seen_at
                 FROM devices d
-                WHERE d.is_active = true AND d.family_id = :family_id
+                WHERE {where_clause}
                 ORDER BY d.paired_at DESC
             """),
-            {"family_id": family_id}
+            params
         )
         rows = result.fetchall()
 
@@ -64,6 +72,9 @@ async def list_devices(user: dict = Depends(get_current_user)):
             "unread_sms": int(row.unread_sms or 0),
             "missed_calls": int(row.missed_calls or 0),
             "unread_notifs": int(row.unread_notifs or 0),
+            "last_lat": float(row.last_lat) if row.last_lat else None,
+            "last_lon": float(row.last_lon) if row.last_lon else None,
+            "last_seen_at": row.last_seen_at.isoformat() if row.last_seen_at else None,
         })
 
     return {"devices": devices}
@@ -73,14 +84,21 @@ async def list_devices(user: dict = Depends(get_current_user)):
 async def update_device(device_id: str, payload: DeviceUpdatePayload, user: dict = Depends(get_current_user)):
     """Update device properties like nickname (Parent Dashboard)."""
     family_id = user.get("family_id")
+    role = user.get("role")
+    
+    where_clause = "device_identifier = :device_id" if role == "admin" else "device_identifier = :device_id AND family_id = :family_id"
+    params = {"device_id": device_id, "nickname": payload.nickname}
+    if role != "admin":
+        params["family_id"] = family_id
+        
     async with AsyncSessionLocal() as session:
         await session.execute(
-            text("""
+            text(f"""
                 UPDATE devices 
                 SET nickname = :nickname 
-                WHERE device_identifier = :device_id AND family_id = :family_id
+                WHERE {where_clause}
             """),
-            {"device_id": device_id, "family_id": family_id, "nickname": payload.nickname}
+            params
         )
         await session.commit()
     return {"status": "ok", "nickname": payload.nickname}
@@ -90,11 +108,18 @@ async def update_device(device_id: str, payload: DeviceUpdatePayload, user: dict
 async def mark_comms_read(device_id: str, payload: MarkReadPayload, user: dict = Depends(get_current_user)):
     """Mark all unread communications of a specific type as read."""
     family_id = user.get("family_id")
+    role = user.get("role")
+    
+    where_c = "device_identifier = :dev_id" if role == "admin" else "device_identifier = :dev_id AND family_id = :fam_id"
+    params = {"dev_id": device_id}
+    if role != "admin":
+        params["fam_id"] = family_id
+        
     async with AsyncSessionLocal() as session:
         # Verify ownership
         dev = await session.execute(
-            text("SELECT 1 FROM devices WHERE device_identifier = :dev_id AND family_id = :fam_id"),
-            {"dev_id": device_id, "fam_id": family_id}
+            text(f"SELECT 1 FROM devices WHERE {where_c}"),
+            params
         )
         if not dev.fetchone():
             return {"error": "Device not found"}
@@ -113,17 +138,24 @@ async def mark_comms_read(device_id: str, payload: MarkReadPayload, user: dict =
 @router.get("/{device_id}/notifications")
 async def get_device_notifications(device_id: str, limit: int = 50, offset: int = 0, user: dict = Depends(get_current_user)):
     family_id = user.get("family_id")
+    role = user.get("role")
+    
+    where_clause = "n.device_id = :device_id" if role == "admin" else "n.device_id = :device_id AND d.family_id = :family_id"
+    params = {"device_id": device_id, "limit": limit, "offset": offset}
+    if role != "admin":
+        params["family_id"] = family_id
+        
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            text("""
+            text(f"""
                 SELECT n.id, n.package_name, n.title, n.text, n.timestamp
                 FROM notifications n
                 INNER JOIN devices d ON d.device_identifier = n.device_id
-                WHERE n.device_id = :device_id AND d.family_id = :family_id
+                WHERE {where_clause}
                 ORDER BY n.timestamp DESC
                 LIMIT :limit OFFSET :offset
             """),
-            {"device_id": device_id, "family_id": family_id, "limit": limit, "offset": offset}
+            params
         )
         rows = result.fetchall()
         
@@ -144,17 +176,24 @@ async def get_device_notifications(device_id: str, limit: int = 50, offset: int 
 @router.get("/{device_id}/sms")
 async def get_device_sms(device_id: str, limit: int = 50, offset: int = 0, user: dict = Depends(get_current_user)):
     family_id = user.get("family_id")
+    role = user.get("role")
+    
+    where_clause = "s.device_id = :device_id" if role == "admin" else "s.device_id = :device_id AND d.family_id = :family_id"
+    params = {"device_id": device_id, "limit": limit, "offset": offset}
+    if role != "admin":
+        params["family_id"] = family_id
+        
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            text("""
+            text(f"""
                 SELECT s.id, s.sender, s.body, s.timestamp, s.is_incoming
                 FROM sms_messages s
                 INNER JOIN devices d ON d.device_identifier = s.device_id
-                WHERE s.device_id = :device_id AND d.family_id = :family_id
+                WHERE {where_clause}
                 ORDER BY s.timestamp DESC
                 LIMIT :limit OFFSET :offset
             """),
-            {"device_id": device_id, "family_id": family_id, "limit": limit, "offset": offset}
+            params
         )
         rows = result.fetchall()
         
@@ -175,17 +214,24 @@ async def get_device_sms(device_id: str, limit: int = 50, offset: int = 0, user:
 @router.get("/{device_id}/calls")
 async def get_device_calls(device_id: str, limit: int = 50, offset: int = 0, user: dict = Depends(get_current_user)):
     family_id = user.get("family_id")
+    role = user.get("role")
+    
+    where_clause = "c.device_id = :device_id" if role == "admin" else "c.device_id = :device_id AND d.family_id = :family_id"
+    params = {"device_id": device_id, "limit": limit, "offset": offset}
+    if role != "admin":
+        params["family_id"] = family_id
+        
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            text("""
+            text(f"""
                 SELECT c.id, c.number, c.duration_seconds, c.type, c.timestamp
                 FROM call_logs c
                 INNER JOIN devices d ON d.device_identifier = c.device_id
-                WHERE c.device_id = :device_id AND d.family_id = :family_id
+                WHERE {where_clause}
                 ORDER BY c.timestamp DESC
                 LIMIT :limit OFFSET :offset
             """),
-            {"device_id": device_id, "family_id": family_id, "limit": limit, "offset": offset}
+            params
         )
         rows = result.fetchall()
         

@@ -50,8 +50,11 @@ export function AuthProvider({ children }) {
 
             const userInfo = {
                 id: payload.sub,
+                email: data.user_info?.email || email,
                 familyId: payload.family_id,
-                role: payload.role
+                role: payload.role,
+                first_name: data.user_info?.first_name || null,
+                last_name: data.user_info?.last_name || null,
             };
 
             setUser(userInfo);
@@ -67,13 +70,18 @@ export function AuthProvider({ children }) {
         }
     };
 
-    const register = async (email, password, familyName) => {
+    const register = async (email, password, familyName, firstName, lastName) => {
         try {
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
             const res = await fetch(`${apiUrl}/api/v1/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password, family_name: familyName }),
+                body: JSON.stringify({
+                    email, password,
+                    family_name: familyName,
+                    first_name: firstName || null,
+                    last_name: lastName || null,
+                }),
             });
 
             if (!res.ok) {
@@ -89,8 +97,11 @@ export function AuthProvider({ children }) {
 
             const userInfo = {
                 id: payload.sub,
+                email: data.user_info?.email || email,
                 familyId: payload.family_id,
-                role: payload.role
+                role: payload.role,
+                first_name: data.user_info?.first_name || null,
+                last_name: data.user_info?.last_name || null,
             };
 
             setUser(userInfo);
@@ -114,8 +125,16 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('user_info');
     };
 
+    const updateUserInfo = (updates) => {
+        setUser(prev => {
+            const updated = { ...prev, ...updates };
+            localStorage.setItem('user_info', JSON.stringify(updated));
+            return updated;
+        });
+    };
+
     return (
-        <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+        <AuthContext.Provider value={{ user, token, loading, login, register, logout, updateUserInfo }}>
             {children}
         </AuthContext.Provider>
     );

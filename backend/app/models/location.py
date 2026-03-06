@@ -34,7 +34,10 @@ class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=_genuuid)
     email = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
-    role = Column(String(20), nullable=False)  # 'parent' or 'child'
+    role = Column(String(20), nullable=False)  # 'parent', 'child', or 'admin'
+    first_name = Column(String(100), nullable=True)
+    last_name = Column(String(100), nullable=True)
+    avatar_url = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     memberships = relationship("FamilyMembership", back_populates="user")
@@ -81,6 +84,11 @@ class Device(Base):
     nickname = Column(String(255), nullable=True)
     os_info = Column(String(255), nullable=True)
     app_version = Column(String(50), nullable=True)
+    
+    # Last known location
+    last_lat = Column(Float, nullable=True)
+    last_lon = Column(Float, nullable=True)
+    last_seen_at = Column(DateTime(timezone=True), nullable=True)
 
     family = relationship("Family", back_populates="devices")
     user = relationship("User", back_populates="devices")

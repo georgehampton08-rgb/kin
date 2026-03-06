@@ -148,7 +148,8 @@ import { fetchWithAuth } from '../utils/api';
 
 function DeviceCard({ device, isActive, onClick }) {
     const { device_id, status = 'UNKNOWN', battery, lastSeen, gpsAccuracy,
-        nickname, app_version, os_info, unread_sms, missed_calls, unread_notifs } = device;
+        nickname, app_version, os_info, unread_sms, missed_calls, unread_notifs,
+        last_lat, last_lon, last_seen_at } = device;
 
     const [isEditingName, setIsEditingName] = useState(false);
     const [editNameValue, setEditNameValue] = useState(nickname || '');
@@ -240,8 +241,18 @@ function DeviceCard({ device, isActive, onClick }) {
             </div>
 
             {/* Expandable Details when Active */}
-            {isActive && (app_version || os_info) && (
+            {isActive && (
                 <div className="dc-details">
+                    {last_lat && last_lon && (
+                        <div className="dc-detail-row">
+                            <span>📍 Coords:</span> {last_lat.toFixed(5)}, {last_lon.toFixed(5)}
+                        </div>
+                    )}
+                    {last_seen_at && (
+                        <div className="dc-detail-row">
+                            <span>🕐 Last Update:</span> {formatDistanceToNow(new Date(last_seen_at), { addSuffix: true })}
+                        </div>
+                    )}
                     {os_info && <div className="dc-detail-row"><span>OS:</span> {os_info}</div>}
                     {app_version && <div className="dc-detail-row"><span>App:</span> v{app_version}</div>}
                     <div className="dc-detail-row"><span>ID:</span> {device_id}</div>

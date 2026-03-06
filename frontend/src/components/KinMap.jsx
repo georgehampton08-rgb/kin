@@ -16,12 +16,14 @@ export default function KinMap({
     isHistory = false,
     zonePolygons = [],
     activeZoneIds = new Set(),
+    liveDevices = {},
+    activeDeviceId = null,
     onMapReady,
 }) {
     const mapContainer = useRef(null);
     const mapRef = useRef(null);
-    const markerRef = useRef(null);
-    const trailRef = useRef([]);
+    const multiMarkersRef = useRef({}); // Stores markers by deviceId
+    const trailRef = useRef([]); // Only tracks active device trail
     const animationRef = useRef(null);
     const currentPosRef = useRef(null);
     const mapReadyRef = useRef(false);
@@ -108,16 +110,8 @@ export default function KinMap({
                 paint: { 'line-color': '#5599ff', 'line-width': 3, 'line-opacity': 0.9 }
             });
 
-            // ── Child Marker ─────────────────────────────────────────────────
-            const el = document.createElement('div');
-            el.className = 'child-marker';
-            const dot = document.createElement('div'); dot.className = 'marker-dot'; el.appendChild(dot);
-            const pulse = document.createElement('div'); pulse.className = 'marker-pulse'; el.appendChild(pulse);
-            const pulseSlow = document.createElement('div'); pulseSlow.className = 'marker-pulse-slow'; el.appendChild(pulseSlow);
-
-            markerRef.current = new maplibregl.Marker({ element: el })
-                .setLngLat([-87.6230, 41.8827])
-                .addTo(map);
+            // Removed single child marker creation from here.
+            // Markers will be created dynamically as devices report location.
 
             mapReadyRef.current = true;
             if (onMapReady) onMapReady(map);
@@ -179,22 +173,137 @@ export default function KinMap({
         }
     }, [historyFeatures]);
 
+    // Helper to get a consistent color from string
+    const stringToColor = (str) => {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+        return '#' + '00000'.substring(0, 6 - c.length) + c;
+    };
+
     // ── Location updates (live animation OR history snap) ────────────────
+    // Handle history snap for targetLocation
     useEffect(() => {
-        if (!targetLocation || !mapReadyRef.current || !markerRef.current) return;
+        if (!isHistory || !targetLocation || !mapReadyRef.current) return;
         const newTarget = [targetLocation.lon, targetLocation.lat];
 
-        if (isHistory) {
-            markerRef.current.setLngLat(newTarget);
-            currentPosRef.current = newTarget;
+        // Hide multi markers in history mode, or just move the active one
+        if (!multiMarkersRef.current['__history']) {
+            const el = document.createElement('div');
+            el.className = 'child-marker active-target';
+            el.style.setProperty('--marker-color', '#fff');
+            const dot = document.createElement('div'); dot.className = 'marker-dot'; el.appendChild(dot);
+            multiMarkersRef.current['__history'] = new maplibregl.Marker({ element: el }).setLngLat(newTarget).addTo(mapRef.current);
+        } else {
+            multiMarkersRef.current['__history'].setLngLat(newTarget);
+        }
+        currentPosRef.current = newTarget;
+    }, [targetLocation, isHistory]);
+
+    // Handle live multi-device locations
+    useEffect(() => {
+        if (isHistory || !mapReadyRef.current) {
+            // Cleanup markers if entering history
+            if (isHistory) {
+                Object.keys(multiMarkersRef.current).forEach(id => {
+                    if (id !== '__history') {
+                        multiMarkersRef.current[id].remove();
+                        delete multiMarkersRef.current[id];
+                    }
+                });
+            }
             return;
         }
 
+        // Remove history marker if present
+        if (multiMarkersRef.current['__history']) {
+            multiMarkersRef.current['__history'].remove();
+            delete multiMarkersRef.current['__history'];
+        }
+
+        // Sync markers
+        Object.entries(liveDevices).forEach(([id, deviceState]) => {
+            const loc = deviceState.lastLocation;
+            if (!loc) return;
+            const pos = [loc.lon, loc.lat];
+
+            const isActive = id === activeDeviceId;
+
+            if (!multiMarkersRef.current[id]) {
+                const el = document.createElement('div');
+                el.className = `child-marker ${isActive ? 'active-target' : 'bg-target'}`;
+
+                const color = isActive ? '#00ffcc' : stringToColor(id);
+                el.style.setProperty('--marker-color', color);
+
+                const dot = document.createElement('div'); dot.className = 'marker-dot'; el.appendChild(dot);
+                if (isActive) {
+                    const pulse = document.createElement('div'); pulse.className = 'marker-pulse'; el.appendChild(pulse);
+                    const pulseSlow = document.createElement('div'); pulseSlow.className = 'marker-pulse-slow'; el.appendChild(pulseSlow);
+                }
+
+                multiMarkersRef.current[id] = new maplibregl.Marker({ element: el })
+                    .setLngLat(pos)
+                    .addTo(mapRef.current);
+            } else {
+                const marker = multiMarkersRef.current[id];
+                const el = marker.getElement();
+                const color = isActive ? '#00ffcc' : stringToColor(id);
+                el.style.setProperty('--marker-color', color);
+
+                if (isActive) {
+                    if (!el.classList.contains('active-target')) {
+                        el.classList.remove('bg-target');
+                        el.classList.add('active-target');
+                        if (!el.querySelector('.marker-pulse')) {
+                            const pulse = document.createElement('div'); pulse.className = 'marker-pulse'; el.appendChild(pulse);
+                            const pulseSlow = document.createElement('div'); pulseSlow.className = 'marker-pulse-slow'; el.appendChild(pulseSlow);
+                        }
+                    }
+                } else {
+                    if (el.classList.contains('active-target')) {
+                        el.classList.remove('active-target');
+                        el.classList.add('bg-target');
+                        el.querySelectorAll('.marker-pulse, .marker-pulse-slow').forEach(n => n.remove());
+                    }
+                }
+
+                // If this is the active device, animate and pan
+                if (isActive) {
+                    animateActiveMarker(marker, pos);
+                } else {
+                    marker.setLngLat(pos);
+                }
+            }
+        });
+
+        // Cleanup disconnected devices
+        Object.keys(multiMarkersRef.current).forEach(id => {
+            if (id !== '__history' && !liveDevices[id]) {
+                multiMarkersRef.current[id].remove();
+                delete multiMarkersRef.current[id];
+            }
+        });
+
+    }, [liveDevices, activeDeviceId, isHistory]);
+
+    function animateActiveMarker(marker, newTarget) {
         if (!currentPosRef.current) {
             currentPosRef.current = newTarget;
-            markerRef.current.setLngLat(newTarget);
+            marker.setLngLat(newTarget);
             mapRef.current.flyTo({ center: newTarget, zoom: 16, duration: 800 });
             trailRef.current = [newTarget];
+            return;
+        }
+
+        const startP = turf.point(currentPosRef.current);
+        const endP = turf.point(newTarget);
+        const dist = turf.distance(startP, endP);
+
+        // Only trigger update if moved significantly
+        if (dist < 0.001) {
+            currentPosRef.current = newTarget;
+            marker.setLngLat(newTarget);
             return;
         }
 
@@ -203,25 +312,23 @@ export default function KinMap({
         const trailSrc = mapRef.current.getSource('trail-source');
         if (trailSrc) trailSrc.setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: trailRef.current } });
 
-        const startP = turf.point(currentPosRef.current);
-        const endP = turf.point(newTarget);
-        const dist = turf.distance(startP, endP);
         const bearing = turf.bearing(startP, endP);
-        if (dist < 0.001) { currentPosRef.current = newTarget; markerRef.current.setLngLat(newTarget); return; }
-
         const duration = 800;
         const startTime = performance.now();
+
         function animate(time) {
             const progress = Math.min((time - startTime) / duration, 1);
             const pos = turf.destination(startP, dist * progress, bearing).geometry.coordinates;
-            markerRef.current.setLngLat(pos);
+            marker.setLngLat(pos);
             currentPosRef.current = pos;
             mapRef.current.panTo(pos, { duration: 0 });
             if (progress < 1) animationRef.current = requestAnimationFrame(animate);
         }
         cancelAnimationFrame(animationRef.current);
         animationRef.current = requestAnimationFrame(animate);
-    }, [targetLocation, isHistory]);
+    }
+
+
 
     // ── Expose tilt control via ref ──────────────────────────────────────
     function handleTilt() {

@@ -9,11 +9,13 @@ export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [familyName, setFamilyName] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (isRegistering) {
-            await register(email, password, familyName);
+            await register(email, password, familyName, firstName, lastName);
         } else {
             await login(email, password);
         }
@@ -32,16 +34,38 @@ export default function Login() {
 
                 <form onSubmit={handleSubmit} className="login-form">
                     {isRegistering && (
-                        <div className="form-group">
-                            <label>Family Name</label>
-                            <input
-                                type="text"
-                                value={familyName}
-                                onChange={e => setFamilyName(e.target.value)}
-                                placeholder="E.g., The Smiths"
-                                required
-                            />
-                        </div>
+                        <>
+                            <div className="form-group">
+                                <label>Family Name</label>
+                                <input
+                                    type="text"
+                                    value={familyName}
+                                    onChange={e => setFamilyName(e.target.value)}
+                                    placeholder="E.g., The Smiths"
+                                    required
+                                />
+                            </div>
+                            <div className="name-row">
+                                <div className="form-group">
+                                    <label>First Name</label>
+                                    <input
+                                        type="text"
+                                        value={firstName}
+                                        onChange={e => setFirstName(e.target.value)}
+                                        placeholder="George"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Last Name</label>
+                                    <input
+                                        type="text"
+                                        value={lastName}
+                                        onChange={e => setLastName(e.target.value)}
+                                        placeholder="Hampton"
+                                    />
+                                </div>
+                            </div>
+                        </>
                     )}
 
                     <div className="form-group">
@@ -169,6 +193,13 @@ export default function Login() {
                 .toggle-mode-btn:hover {
                     color: #fff;
                     text-decoration: underline;
+                }
+                .name-row {
+                    display: flex;
+                    gap: 12px;
+                }
+                .name-row .form-group {
+                    flex: 1;
                 }
             `}</style>
         </div>

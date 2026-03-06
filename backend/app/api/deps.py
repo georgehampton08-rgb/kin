@@ -76,11 +76,11 @@ async def get_db():
 
 
 def require_parent(user: dict = Depends(get_current_user)) -> dict:
-    """Dependency that ensures the caller has the 'parent' role."""
-    if user.get("role") != "parent":
+    """Dependency that ensures the caller has the 'parent' or 'admin' role."""
+    if user.get("role") not in ("parent", "admin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Parent role required",
+            detail="Parent or Admin role required",
         )
     return user
 

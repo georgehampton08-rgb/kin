@@ -21,6 +21,7 @@ from slowapi.util import get_remote_address
 
 from app.core.rate_limiter import (
     limiter, check_ip_lockout, record_auth_failure, clear_auth_failures,
+    reset_lockout_state,
 )
 
 from app.db.session import AsyncSessionLocal
@@ -54,6 +55,8 @@ class RegisterRequest(BaseModel):
     email: str = Field(..., min_length=5, max_length=255, description="Parent email address")
     password: str = Field(..., min_length=8, max_length=128, description="Password (min 8 chars)")
     family_name: str = Field(..., min_length=1, max_length=100, description="Family name")
+    first_name: str | None = Field(None, max_length=100)
+    last_name: str | None = Field(None, max_length=100)
 
     @field_validator("email")
     @classmethod
@@ -87,6 +90,7 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    user_info: dict | None = None
 
 
 class PairDeviceResponse(BaseModel):
@@ -126,6 +130,8 @@ async def register(request: Request, req: RegisterRequest):
             email=req.email,
             hashed_password=hash_password(req.password),
             role="parent",
+            first_name=req.first_name,
+            last_name=req.last_name,
         )
         session.add(user)
         await session.flush()
@@ -158,8 +164,49 @@ async def register(request: Request, req: RegisterRequest):
         await session.commit()
 
     clear_auth_failures(get_remote_address(request))
-    return TokenResponse(access_token=access_token, refresh_token=refresh_tok)
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_tok,
+        user_info={"email": req.email, "role": "parent", "first_name": req.first_name, "last_name": req.last_name},
+    )
 
+
+# ── Update Profile ──────────────────────────────────────────
+
+class UpdateProfileRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    first_name: str | None = Field(None, max_length=100)
+    last_name: str | None = Field(None, max_length=100)
+
+
+@router.put("/profile")
+async def update_profile(req: UpdateProfileRequest, user: dict = Depends(get_current_user)):
+    """Update the authenticated user's profile (name)."""
+    user_id = user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(User).where(User.id == uuid.UUID(user_id))
+        )
+        db_user = result.scalar_one_or_none()
+        if not db_user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        if req.first_name is not None:
+            db_user.first_name = req.first_name
+        if req.last_name is not None:
+            db_user.last_name = req.last_name
+
+        await session.commit()
+
+    return {
+        "status": "ok",
+        "first_name": req.first_name,
+        "last_name": req.last_name,
+    }
 
 class ChangePasswordRequest(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -240,7 +287,7 @@ async def login(request: Request, req: LoginRequest):
             user_id=str(user.id),
             family_id=family_id,
             role=user.role,
-            scope="dashboard" if user.role == "parent" else "telemetry",
+            scope="dashboard" if user.role in ("parent", "admin") else "telemetry",
         )
         refresh_tok, jti, expires_at = create_refresh_token(
             user_id=str(user.id),
@@ -253,7 +300,16 @@ async def login(request: Request, req: LoginRequest):
         await session.commit()
 
     clear_auth_failures(get_remote_address(request))
-    return TokenResponse(access_token=access_token, refresh_token=refresh_tok)
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_tok,
+        user_info={
+            "email": user.email,
+            "role": user.role,
+            "first_name": getattr(user, 'first_name', None),
+            "last_name": getattr(user, 'last_name', None),
+        },
+    )
 
 
 # ── Create Pairing Token ────────────────────────────────────
@@ -493,3 +549,14 @@ async def refresh_token(request: Request, req: RefreshRequest):
         await session.commit()
 
     return TokenResponse(access_token=new_access, refresh_token=new_refresh)
+
+
+# ── Dev-Only Lockout Reset ──────────────────────────────────
+@router.post("/reset-lockout")
+async def reset_lockout():
+    """DEV ONLY: Clear all IP lockout state."""
+    env = os.getenv("ENVIRONMENT", "development")
+    if env == "production":
+        raise HTTPException(status_code=404, detail="Not found")
+    reset_lockout_state()
+    return {"status": "ok", "detail": "All lockouts cleared"}

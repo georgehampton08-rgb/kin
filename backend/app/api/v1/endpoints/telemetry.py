@@ -351,7 +351,7 @@ async def _process_point(
             },
         )
 
-        # 2. Raw location_history (needed by map-matching coordinate lookup)
+        # 2. Location history (PostGIS geography)
         await session.execute(
             text("""
                 INSERT INTO location_history (device_id, coordinates, speed, battery_level, timestamp)
@@ -368,6 +368,16 @@ async def _process_point(
                 "ts": timestamp,
             },
         )
+
+        # 2b. Update device last known location
+        await session.execute(
+            text("""
+                UPDATE devices SET last_lat = :lat, last_lon = :lng, last_seen_at = :ts
+                WHERE device_identifier = :device_id
+            """),
+            {"device_id": device_id, "lat": lat, "lng": lng, "ts": timestamp},
+        )
+
         await session.commit()
 
     # 3. Drive trip state machine (async, non-blocking)
@@ -381,3 +391,17 @@ async def _process_point(
         timestamp=timestamp,
         battery_level=battery_level,
     )
+
+    # 4. Broadcast to WebSocket clients
+    try:
+        from app.core.ws_manager import ws_manager
+        await ws_manager.broadcast(device_id, {
+            "type": "telemetry",
+            "lat": lat,
+            "lon": lng,
+            "speed": speed,
+            "battery_level": battery_level,
+            "timestamp": timestamp.isoformat() if timestamp else None,
+        })
+    except Exception as e:
+        logger.debug(f"WS broadcast skipped: {e}")

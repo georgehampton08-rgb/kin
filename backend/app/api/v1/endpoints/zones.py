@@ -22,17 +22,22 @@ ZONE_COLORS = {
 async def list_zones(user: dict = Depends(get_current_user)):
     """Returns all zones for the current family."""
     family_id = user.get("family_id")
+    role = user.get("role")
+    
+    where_clause = "1=1" if role == "admin" else "family_id = :family_id"
+    params = {} if role == "admin" else {"family_id": family_id}
+    
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            text("""
+            text(f"""
                 SELECT id::text, name, zone_type,
                        COALESCE(radius, 200) AS radius_meters,
                        coordinates
                 FROM zones 
-                WHERE family_id = :family_id
+                WHERE {where_clause}
                 ORDER BY created_at
             """),
-            {"family_id": family_id}
+            params
         )
         rows = result.fetchall()
 

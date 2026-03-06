@@ -133,8 +133,9 @@ async def websocket_endpoint(websocket: WebSocket, device_id: str):
         await websocket.close(code=1008)
         return
 
+    role = payload.get("role")
     family_id = payload.get("family_id")
-    if not family_id:
+    if not family_id and role != "admin":
         await websocket.close(code=1008)
         return
 
@@ -142,12 +143,14 @@ async def websocket_endpoint(websocket: WebSocket, device_id: str):
     from sqlalchemy import select
     from app.models.location import Device
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(Device).where(
+        if role == "admin":
+            query = select(Device).where(Device.device_identifier == device_id)
+        else:
+            query = select(Device).where(
                 Device.device_identifier == device_id,
                 Device.family_id == family_id
             )
-        )
+        result = await session.execute(query)
         if not result.scalar_one_or_none():
             await websocket.close(code=1008)
             return

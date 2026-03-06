@@ -22,15 +22,18 @@ async def replay_history(
     user: dict = Depends(get_current_user),
 ):
     """Returns a GeoJSON FeatureCollection of matched routes for a device on a date."""
+    role = user.get("role")
     family_id = user.get("family_id")
 
     async with AsyncSessionLocal() as session:
-        device_result = await session.execute(
-            select(Device).where(
+        if role == "admin":
+            query = select(Device).where(Device.device_identifier == device_id)
+        else:
+            query = select(Device).where(
                 Device.device_identifier == device_id,
                 Device.family_id == family_id,
             )
-        )
+        device_result = await session.execute(query)
         device = device_result.scalar_one_or_none()
 
         if not device:

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import KinMap from './components/KinMap';
 import { useKinSocket } from './hooks/useKinSocket';
@@ -10,6 +10,7 @@ import DeviceStatusPanel from './components/DeviceStatusPanel';
 import DeviceListPanel from './components/DeviceListPanel';
 import CommsPanel from './components/CommsPanel';
 import SettingsDrawer from './components/SettingsDrawer';
+import DeviceTracker from './components/DeviceTracker';
 import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import { fetchWithAuth } from './utils/api';
@@ -74,35 +75,48 @@ export default function App() {
         fetchDevices();
     }, [user]);
 
+    const [deviceStates, setDeviceStates] = useState({});
+
     // Data hooks
-    const { lastLocation, status, deviceStatus } = useKinSocket(deviceId, handleAlert);
     const { features, coordinates, loading, error, fetchHistory } = useHistoryScrub(deviceId);
     const { zones, zonePolygons } = useZones();
 
-    // Track all devices we've seen with their latest status
-    useEffect(() => {
-        if (!deviceId) return;
-        setKnownDevices(prev => {
-            const existing = prev.find(d => d.device_id === deviceId);
-            const updated = {
-                device_id: deviceId,
-                status: deviceStatus?.status || (status === 'connected' ? 'ONLINE' : status === 'connecting' ? 'STALE' : 'OFFLINE'),
-                battery: deviceStatus?.battery ?? lastLocation?.battery ?? null,
-                gpsAccuracy: deviceStatus?.gpsAccuracy ?? null,
-                lastSeen: deviceStatus?.lastSeen ?? (lastLocation ? new Date().toISOString() : null),
-                nickname: existing?.nickname,
-                app_version: existing?.app_version,
-                os_info: existing?.os_info,
-                unread_sms: existing?.unread_sms,
-                missed_calls: existing?.missed_calls,
-                unread_notifs: existing?.unread_notifs,
-            };
-            if (existing) {
-                return prev.map(d => d.device_id === deviceId ? updated : d);
+    const handleDeviceUpdate = useCallback((id, loc, stat, devStat) => {
+        setDeviceStates(prev => {
+            const existing = prev[id] || {};
+            // avoid re-renders if no change
+            if (existing.lastLocation === loc && existing.status === stat && existing.deviceStatus === devStat) {
+                return prev;
             }
-            return [...prev, updated];
+            return {
+                ...prev,
+                [id]: { lastLocation: loc, status: stat, deviceStatus: devStat }
+            };
         });
-    }, [deviceId, status, deviceStatus, lastLocation]);
+
+        // Also update known devices so list panel stays fresh
+        setKnownDevices(prev => {
+            const existing = prev.find(d => d.device_id === id);
+            if (!existing) return prev;
+
+            const newStatus = devStat?.status || (stat === 'connected' ? 'ONLINE' : stat === 'connecting' ? 'STALE' : 'OFFLINE');
+            if (existing.status === newStatus && existing.lastSeen === devStat?.lastSeen) return prev; // optimize
+
+            const updated = {
+                ...existing,
+                status: newStatus,
+                battery: devStat?.battery ?? loc?.battery ?? existing.battery,
+                gpsAccuracy: devStat?.gpsAccuracy ?? existing.gpsAccuracy,
+                lastSeen: devStat?.lastSeen ?? (loc ? new Date().toISOString() : existing.lastSeen),
+            };
+            return prev.map(d => d.device_id === id ? updated : d);
+        });
+    }, []);
+
+    const selectedState = deviceStates[deviceId] || {};
+    const lastLocation = selectedState.lastLocation;
+    const status = selectedState.status || 'disconnected';
+    const deviceStatus = selectedState.deviceStatus;
 
     // Check which zones the current live marker is inside
     useEffect(() => {
@@ -242,6 +256,8 @@ export default function App() {
                     isHistory={mode === 'history'}
                     zonePolygons={zonePolygons}
                     activeZoneIds={activeZoneIds}
+                    liveDevices={mode === 'live' ? deviceStates : {}}
+                    activeDeviceId={deviceId}
                 />
 
                 {/* Comms Panel Overlay */}
@@ -339,6 +355,16 @@ export default function App() {
         .device-selector { display: flex; align-items: center; }
       `}</style>
             {isAddCardOpen && <AddDeviceModal onClose={() => setIsAddCardOpen(false)} />}
+
+            {/* Background Device Trackers */}
+            {mode === 'live' && knownDevices.map(d => (
+                <DeviceTracker
+                    key={d.device_id}
+                    device={d}
+                    onUpdate={handleDeviceUpdate}
+                    onAlert={handleAlert}
+                />
+            ))}
         </div>
     );
 }
