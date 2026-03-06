@@ -47,7 +47,7 @@ dependencies:
   http: ^1.2.0
   shared_preferences: ^2.2.3
   notification_listener_service: ^1.1.0
-  flutter_sms_inbox: ^1.2.0
+  flutter_sms_inbox: ^1.0.4
   call_log: ^3.2.0
 
 dev_dependencies:
