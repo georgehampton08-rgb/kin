@@ -304,14 +304,16 @@ export default function App() {
             )}
 
             {/* Device List Panel */}
-            <DeviceListPanel
-                devices={knownDevices}
-                activeDeviceId={deviceId}
-                onSelectDevice={id => setDeviceId(id)}
-                forceClose={sidebarOpen}
-                onDeleteDevice={handleDeleteDevice}
-                onRefresh={() => fetchDevices()}
-            />
+            {mode !== 'comms' && (
+                <DeviceListPanel
+                    devices={knownDevices}
+                    activeDeviceId={deviceId}
+                    onSelectDevice={id => setDeviceId(id)}
+                    forceClose={sidebarOpen}
+                    onDeleteDevice={handleDeleteDevice}
+                    onRefresh={() => fetchDevices()}
+                />
+            )}
 
             {/* Global Settings Drawer */}
             <SettingsDrawer
@@ -391,19 +393,19 @@ export default function App() {
         .add-device-btn:hover { background: #00ccaa; }
         .device-selector { display: flex; align-items: center; }
       `}</style>
-    { isAddCardOpen && <AddDeviceModal onClose={() => setIsAddCardOpen(false)} /> }
+            {isAddCardOpen && <AddDeviceModal onClose={() => setIsAddCardOpen(false)} />}
 
-    {/* Background Device Trackers */ }
-    {
-        mode === 'live' && knownDevices.map(d => (
-            <DeviceTracker
-                key={d.device_id}
-                device={d}
-                onUpdate={handleDeviceUpdate}
-                onAlert={handleAlert}
-            />
-        ))
-    }
+            {/* Background Device Trackers */}
+            {
+                mode === 'live' && knownDevices.map(d => (
+                    <DeviceTracker
+                        key={d.device_id}
+                        device={d}
+                        onUpdate={handleDeviceUpdate}
+                        onAlert={handleAlert}
+                    />
+                ))
+            }
         </div >
     );
 }
