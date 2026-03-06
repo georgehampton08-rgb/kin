@@ -1,0 +1,15 @@
+﻿Γö£ΓöÇ MIT: 201
+Γö£ΓöÇ ISC: 26
+Γö£ΓöÇ BSD-3-Clause: 8
+Γö£ΓöÇ BSD-2-Clause: 2
+Γö£ΓöÇ Unlicense: 2
+Γö£ΓöÇ Custom: https://github.com/tmcw/jsonlint: 1
+Γö£ΓöÇ (MIT OR Apache-2.0): 1
+Γö£ΓöÇ Custom: https://github.com/bjornharrtell/jsts: 1
+Γö£ΓöÇ BSD: 1
+Γö£ΓöÇ Apache-2.0: 1
+Γö£ΓöÇ CC-BY-4.0: 1
+Γö£ΓöÇ Custom: https://travis-ci.org/bjornharrtell/jsts.svg: 1
+Γö£ΓöÇ BSD*: 1
+ΓööΓöÇ 0BSD: 1
+

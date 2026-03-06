@@ -27,11 +27,14 @@ import geoalchemy2
 # for 'autogenerate' support
 target_metadata = Base.metadata
 
-# Override DB URL from environment if DATABASE_URL is set (local dev + CI/CD)
-import os as _os
-_db_url = _os.getenv("DATABASE_URL")
-if _db_url:
-    config.set_main_option("sqlalchemy.url", _db_url)
+# Override DB URL from settings directly so it matches the FastAPI app
+try:
+    from app.core.config import settings
+    # Pydantic v2 PostgresDsn returns URL, cast to string
+    url_str = str(settings.DATABASE_URL)
+    config.set_main_option("sqlalchemy.url", url_str)
+except ImportError:
+    pass
 
 
 # other values from the config, defined by the needs of env.py,

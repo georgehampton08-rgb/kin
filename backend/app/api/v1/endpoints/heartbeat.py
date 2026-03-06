@@ -28,6 +28,8 @@ class HeartbeatPayload(BaseModel):
     battery_level: float | None = Field(None, ge=0, le=100)
     gps_accuracy: float | None = Field(None, ge=0, le=1000, description="Accuracy in metres")
     timestamp: datetime | None = Field(None)
+    app_version: str | None = Field(None, max_length=50)
+    os_info: str | None = Field(None, max_length=255)
 
     @field_validator("timestamp")
     @classmethod
@@ -55,6 +57,7 @@ async def heartbeat(
     now = payload.timestamp or datetime.now(timezone.utc)
 
     async with AsyncSessionLocal() as session:
+        # Update current status
         await session.execute(
             text("""
                 INSERT INTO device_status
@@ -75,6 +78,21 @@ async def heartbeat(
                 "hb": now,
             },
         )
+        # Update app_version and os_info if provided
+        if payload.app_version or payload.os_info:
+            await session.execute(
+                text("""
+                    UPDATE devices 
+                    SET app_version = COALESCE(:app_version, app_version), 
+                        os_info = COALESCE(:os_info, os_info)
+                    WHERE device_identifier = :device_id
+                """),
+                {
+                    "device_id": payload.device_id,
+                    "app_version": payload.app_version,
+                    "os_info": payload.os_info
+                }
+            )
         await session.commit()
 
     from app.core.ws_manager import ws_manager

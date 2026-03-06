@@ -26,6 +26,12 @@ export default function CommsPanel({ deviceId }) {
                 const json = await res.json();
                 if (isMounted) {
                     setData(prev => ({ ...prev, [activeTab]: json[activeTab] || [] }));
+
+                    // Mark as read in the background
+                    fetchWithAuth(`${apiUrl}/api/v1/devices/${deviceId}/comms/mark_read`, {
+                        method: 'POST',
+                        body: JSON.stringify({ type: activeTab })
+                    }).catch(err => console.error(`Failed to mark ${activeTab} as read:`, err));
                 }
             } catch (err) {
                 if (isMounted) setError(err.message);

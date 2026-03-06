@@ -9,6 +9,7 @@ import AddDeviceModal from './components/AddDeviceModal';
 import DeviceStatusPanel from './components/DeviceStatusPanel';
 import DeviceListPanel from './components/DeviceListPanel';
 import CommsPanel from './components/CommsPanel';
+import SettingsDrawer from './components/SettingsDrawer';
 import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import { fetchWithAuth } from './utils/api';
@@ -42,6 +43,7 @@ export default function App() {
     const [activeTripIdx, setActiveTripIdx] = useState(null);
     const [activeZoneIds, setActiveZoneIds] = useState(new Set());
     const [isAddCardOpen, setIsAddCardOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [knownDevices, setKnownDevices] = useState([]);
 
     // Fetch paired devices on mount
@@ -55,7 +57,13 @@ export default function App() {
                     const data = await res.json();
                     setKnownDevices(data.devices.map(d => ({
                         device_id: d.device_id,
-                        status: d.is_active ? 'OFFLINE' : 'UNKNOWN', // Initial status before WS connection
+                        nickname: d.nickname,
+                        app_version: d.app_version,
+                        os_info: d.os_info,
+                        unread_sms: d.unread_sms,
+                        missed_calls: d.missed_calls,
+                        unread_notifs: d.unread_notifs,
+                        status: 'OFFLINE', // Initial status before WS connection
                         lastSeen: d.paired_at
                     })));
                 }
@@ -64,7 +72,7 @@ export default function App() {
             }
         };
         fetchDevices();
-    }, []);
+    }, [user]);
 
     // Data hooks
     const { lastLocation, status, deviceStatus } = useKinSocket(deviceId, handleAlert);
@@ -82,6 +90,12 @@ export default function App() {
                 battery: deviceStatus?.battery ?? lastLocation?.battery ?? null,
                 gpsAccuracy: deviceStatus?.gpsAccuracy ?? null,
                 lastSeen: deviceStatus?.lastSeen ?? (lastLocation ? new Date().toISOString() : null),
+                nickname: existing?.nickname,
+                app_version: existing?.app_version,
+                os_info: existing?.os_info,
+                unread_sms: existing?.unread_sms,
+                missed_calls: existing?.missed_calls,
+                unread_notifs: existing?.unread_notifs,
             };
             if (existing) {
                 return prev.map(d => d.device_id === deviceId ? updated : d);
@@ -182,10 +196,10 @@ export default function App() {
                 )}
 
                 <div className="device-selector">
-                    <button className="add-device-btn" onClick={() => setIsAddCardOpen(true)}>+</button>
+                    <button className="add-device-btn" title="Add New Device" onClick={() => setIsAddCardOpen(true)}>+</button>
                     <label>Target ID:</label>
-                    <input id="device-id-input" value={deviceId} onChange={e => setDeviceId(e.target.value)} placeholder="Enter device ID" />
-                    <button className="mode-btn" onClick={logout}>Logout</button>
+                    <input id="device-id-input" value={deviceId} onChange={e => setDeviceId(e.target.value)} placeholder="Enter ID" />
+                    <button className="mode-btn settings-btn" title="Global Settings" onClick={() => setIsSettingsOpen(true)}>☰</button>
                 </div>
             </header>
 
@@ -243,6 +257,12 @@ export default function App() {
                     activeDeviceId={deviceId}
                     onSelectDevice={id => setDeviceId(id)}
                     forceClose={sidebarOpen}
+                />
+
+                {/* Global Settings Drawer */}
+                <SettingsDrawer
+                    isOpen={isSettingsOpen}
+                    onClose={() => setIsSettingsOpen(false)}
                 />
 
                 {/* Zone Legend */}

@@ -6,7 +6,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import '../providers/location_provider.dart';
 import 'database_service.dart';
-
+import 'dart:io' show Platform;
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 // ── Constants ────────────────────────────────────────────────
 const double _lowBatteryThreshold = 20.0;
 const int _heartbeatIntervalMinutes = 5;
@@ -239,10 +241,28 @@ class LocationService {
     if (_authToken == null || _deviceId == null) return;
 
     try {
+      String? appVersion;
+      String? osInfo;
+      try {
+        final pkg = await PackageInfo.fromPlatform();
+        appVersion = '${pkg.version}+${pkg.buildNumber}';
+        
+        final devInfo = DeviceInfoPlugin();
+        if (Platform.isAndroid) {
+            final androidInfo = await devInfo.androidInfo;
+            osInfo = 'Android ${androidInfo.version.release} (${androidInfo.model})';
+        } else if (Platform.isIOS) {
+            final iosInfo = await devInfo.iosInfo;
+            osInfo = 'iOS ${iosInfo.systemVersion} (${iosInfo.utsname.machine})';
+        }
+      } catch(e) { /* ignore */ }
+
       final body = json.encode({
         'device_id': _deviceId,
         if (batteryLevel != null) 'battery_level': batteryLevel,
         if (gpsAccuracy != null) 'gps_accuracy': gpsAccuracy,
+        if (appVersion != null) 'app_version': appVersion,
+        if (osInfo != null) 'os_info': osInfo,
         'timestamp': DateTime.now().toUtc().toIso8601String(),
       });
 

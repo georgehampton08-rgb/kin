@@ -144,8 +144,15 @@ export default function DeviceListPanel({ devices = [], activeDeviceId, onSelect
     );
 }
 
+import { fetchWithAuth } from '../utils/api';
+
 function DeviceCard({ device, isActive, onClick }) {
-    const { device_id, status = 'UNKNOWN', battery, lastSeen, gpsAccuracy } = device;
+    const { device_id, status = 'UNKNOWN', battery, lastSeen, gpsAccuracy,
+        nickname, app_version, os_info, unread_sms, missed_calls, unread_notifs } = device;
+
+    const [isEditingName, setIsEditingName] = useState(false);
+    const [editNameValue, setEditNameValue] = useState(nickname || '');
+    const [displayName, setDisplayName] = useState(nickname);
 
     const statusColor = status === 'ONLINE' ? '#00ffcc'
         : status === 'STALE' ? '#ffaa00'
@@ -157,34 +164,89 @@ function DeviceCard({ device, isActive, onClick }) {
             : battery < 50 ? '#ffaa00'
                 : '#00ffcc';
 
+    const handleSaveName = async (e) => {
+        e.stopPropagation();
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const res = await fetchWithAuth(`${apiUrl}/api/v1/devices/${device_id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ nickname: editNameValue })
+            });
+            if (res.ok) {
+                setDisplayName(editNameValue);
+                setIsEditingName(false);
+            }
+        } catch (err) {
+            console.error("Failed to update nickname:", err);
+        }
+    };
+
     return (
         <div
             className={`device-card ${isActive ? 'active' : ''}`}
             onClick={onClick}
             title={`Device: ${device_id}`}
         >
-            {/* Status glow dot */}
-            <div className="dc-status-dot" style={{ '--status-color': statusColor }}>
-                {status === 'ONLINE' && <div className="dc-status-ring" />}
-            </div>
+            <div className="dc-main-row">
+                {/* Status glow dot */}
+                <div className="dc-status-dot" style={{ '--status-color': statusColor }}>
+                    {status === 'ONLINE' && <div className="dc-status-ring" />}
+                </div>
 
-            <div className="dc-info">
-                <div className="dc-name">{device_id.length > 16 ? '…' + device_id.slice(-12) : device_id}</div>
-                <div className="dc-meta">
-                    <span style={{ color: statusColor }}>{status}</span>
-                    {battery != null && (
-                        <span style={{ color: batteryColor }}>🔋 {battery.toFixed(0)}%</span>
-                    )}
-                    {gpsAccuracy != null && (
-                        <span style={{ color: '#666' }}>📍 ±{gpsAccuracy.toFixed(0)}m</span>
+                <div className="dc-info">
+                    <div className="dc-name-row">
+                        {isEditingName ? (
+                            <div className="dc-name-edit" onClick={e => e.stopPropagation()}>
+                                <input
+                                    autoFocus
+                                    value={editNameValue}
+                                    onChange={e => setEditNameValue(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') handleSaveName(e) }}
+                                    placeholder="Device Name..."
+                                />
+                                <button onClick={handleSaveName}>✓</button>
+                                <button onClick={() => setIsEditingName(false)}>✕</button>
+                            </div>
+                        ) : (
+                            <div className="dc-name">
+                                {displayName || (device_id.length > 16 ? '…' + device_id.slice(-12) : device_id)}
+                                <button className="dc-edit-btn" onClick={(e) => { e.stopPropagation(); setIsEditingName(true); }}>✎</button>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="dc-meta">
+                        <span style={{ color: statusColor }}>{status}</span>
+                        {battery != null && (
+                            <span style={{ color: batteryColor }}>🔋 {battery.toFixed(0)}%</span>
+                        )}
+                        {gpsAccuracy != null && (
+                            <span style={{ color: '#666' }}>📍 ±{gpsAccuracy.toFixed(0)}m</span>
+                        )}
+                    </div>
+                    {lastSeen && (
+                        <div className="dc-lastseen">
+                            {formatDistanceToNow(new Date(lastSeen), { addSuffix: true })}
+                        </div>
                     )}
                 </div>
-                {lastSeen && (
-                    <div className="dc-lastseen">
-                        {formatDistanceToNow(new Date(lastSeen), { addSuffix: true })}
-                    </div>
-                )}
+
+                {/* Comms Badges */}
+                <div className="dc-badges">
+                    {unread_notifs > 0 && <span className="dc-badge notif" title="Unread Notifications">🔔 {unread_notifs}</span>}
+                    {unread_sms > 0 && <span className="dc-badge sms" title="Unread SMS">💬 {unread_sms}</span>}
+                    {missed_calls > 0 && <span className="dc-badge call" title="Missed Calls">📞 {missed_calls}</span>}
+                </div>
             </div>
+
+            {/* Expandable Details when Active */}
+            {isActive && (app_version || os_info) && (
+                <div className="dc-details">
+                    {os_info && <div className="dc-detail-row"><span>OS:</span> {os_info}</div>}
+                    {app_version && <div className="dc-detail-row"><span>App:</span> v{app_version}</div>}
+                    <div className="dc-detail-row"><span>ID:</span> {device_id}</div>
+                </div>
+            )}
 
             <style>{`
                 .device-card {
@@ -249,6 +311,86 @@ function DeviceCard({ device, isActive, onClick }) {
                     font-size: 0.68rem;
                     color: #555;
                     margin-top: 2px;
+                }
+                .dc-main-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    width: 100%;
+                }
+                .dc-name-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                .dc-edit-btn {
+                    background: none;
+                    border: none;
+                    color: #8b92a5;
+                    cursor: pointer;
+                    font-size: 0.8rem;
+                    opacity: 0;
+                    transition: opacity 0.2s;
+                }
+                .device-card:hover .dc-edit-btn {
+                    opacity: 1;
+                }
+                .dc-name-edit {
+                    display: flex;
+                    gap: 4px;
+                    align-items: center;
+                }
+                .dc-name-edit input {
+                    background: rgba(0,0,0,0.5);
+                    border: 1px solid rgba(255,255,255,0.2);
+                    color: white;
+                    border-radius: 4px;
+                    padding: 2px 6px;
+                    font-size: 0.8rem;
+                    width: 120px;
+                }
+                .dc-name-edit button {
+                    background: rgba(255,255,255,0.1);
+                    border: none;
+                    color: white;
+                    border-radius: 4px;
+                    cursor: pointer;
+                }
+                .dc-badges {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                }
+                .dc-badge {
+                    font-size: 0.65rem;
+                    padding: 2px 6px;
+                    border-radius: 12px;
+                    font-weight: bold;
+                    white-space: nowrap;
+                }
+                .dc-badge.notif { background: rgba(0,255,204,0.15); color: #00ffcc; border: 1px solid rgba(0,255,204,0.3); }
+                .dc-badge.sms { background: rgba(0,150,255,0.15); color: #0096ff; border: 1px solid rgba(0,150,255,0.3); }
+                .dc-badge.call { background: rgba(255,50,50,0.15); color: #ff3333; border: 1px solid rgba(255,50,50,0.3); }
+                
+                .dc-details {
+                    margin-top: 10px;
+                    padding-top: 10px;
+                    border-top: 1px dashed rgba(255,255,255,0.1);
+                    font-size: 0.7rem;
+                    color: #a0a6cc;
+                    width: 100%;
+                }
+                .dc-detail-row {
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 2px;
+                }
+                .dc-detail-row span {
+                    color: #666;
+                }
+                .device-card {
+                    flex-direction: column;
+                    align-items: flex-start;
                 }
             `}</style>
         </div>

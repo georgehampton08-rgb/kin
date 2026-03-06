@@ -49,6 +49,7 @@ dependencies:
   notification_listener_service: ^0.3.5
   flutter_sms_inbox: ^1.0.4
   call_log: ^5.0.0
+  package_info_plus: ^8.1.1
 
 dev_dependencies:
   flutter_test:

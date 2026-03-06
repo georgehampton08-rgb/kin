@@ -161,6 +161,47 @@ async def register(request: Request, req: RegisterRequest):
     return TokenResponse(access_token=access_token, refresh_token=refresh_tok)
 
 
+class ChangePasswordRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    current_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128, description="New Password (min 8 chars)")
+
+
+@router.post("/change-password", status_code=status.HTTP_200_OK)
+@limiter.limit("5/minute")
+async def change_password(request: Request, req: ChangePasswordRequest, user: dict = Depends(get_current_user)):
+    """Change user password."""
+    user_id = user.get("sub") or user.get("user_id")
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(User).where(User.id == user_id)
+        )
+        db_user = result.scalar_one_or_none()
+
+        if not db_user or not verify_password(req.current_password, db_user.hashed_password):
+            record_auth_failure(get_remote_address(request))
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid current password",
+            )
+
+        db_user.hashed_password = hash_password(req.new_password)
+        session.add(db_user)
+        
+        # Revoke all existing refresh tokens
+        from sqlalchemy import text
+        await session.execute(
+            text("UPDATE refresh_tokens SET revoked_at = now() WHERE user_id = :uid"),
+            {"uid": user_id}
+        )
+        await session.commit()
+        
+    clear_auth_failures(get_remote_address(request))
+    return {"status": "success", "detail": "Password updated successfully"}
+
+
 # ── Login ────────────────────────────────────────────────────
 
 @router.post("/login", response_model=TokenResponse)

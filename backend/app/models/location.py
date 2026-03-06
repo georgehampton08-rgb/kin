@@ -76,6 +76,11 @@ class Device(Base):
     mqtt_password_hash = Column(String(255), nullable=True)
     paired_at = Column(DateTime(timezone=True), default=_utcnow)
     is_active = Column(Boolean, default=True)
+    
+    # Parent Dashboard enhancements
+    nickname = Column(String(255), nullable=True)
+    os_info = Column(String(255), nullable=True)
+    app_version = Column(String(50), nullable=True)
 
     family = relationship("Family", back_populates="devices")
     user = relationship("User", back_populates="devices")
@@ -191,6 +196,7 @@ class Notification(Base):
     title = Column(String, nullable=True)
     text = Column(String, nullable=True)
     timestamp = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    is_read = Column(Boolean, nullable=False, default=False)
 
 
 class SmsMessage(Base):
@@ -201,6 +207,7 @@ class SmsMessage(Base):
     body = Column(String, nullable=True)
     timestamp = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
     is_incoming = Column(Boolean, nullable=False, default=True)
+    is_read = Column(Boolean, nullable=False, default=False)
 
 
 class CallLog(Base):
@@ -211,4 +218,5 @@ class CallLog(Base):
     duration_seconds = Column(Integer, nullable=False, default=0)
     type = Column(String, nullable=False)  # 'missed', 'incoming', 'outgoing'
     timestamp = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    is_read = Column(Boolean, nullable=False, default=False)
 
