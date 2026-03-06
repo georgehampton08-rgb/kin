@@ -124,16 +124,33 @@ class _OnboardingScreenState extends State<OnboardingScreen> with WidgetsBinding
                   Permission.phone,
                 ].request();
 
+                // This opens Android Settings. The user must grant it and hit 'Back' manually.
                 await NotificationListenerService.requestPermission();
-
-                if (!mounted) return;
+              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.all(16),
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('1. Grant Access (Opens Settings)', style: TextStyle(fontSize: 18)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
                 _pageController.nextPage(
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeInOut,
                 );
               },
-              style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(16)),
-              child: const Text('Grant Comm Access', style: TextStyle(fontSize: 18)),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.all(16),
+                backgroundColor: Colors.deepPurple,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('2. I have granted access ->', style: TextStyle(fontSize: 18)),
             ),
           ),
           const SizedBox(height: 32),
