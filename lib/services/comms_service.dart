@@ -126,7 +126,7 @@ class CommsService {
     List<Map<String, dynamic>>? calls,
   }) async {
     try {
-      final jwtStr = await _secureStorage.read(key: 'jwt');
+      final jwtStr = await _secureStorage.read(key: 'access_token');
       final deviceId = await _secureStorage.read(key: 'device_id');
       final baseUrl = await _secureStorage.read(key: 'api_url');
       

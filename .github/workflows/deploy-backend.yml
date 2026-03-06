@@ -37,5 +37,4 @@ jobs:
             --config=cloudbuild.yaml \
             --project=${{ secrets.GCP_PROJECT_ID }} \
             --region=us-central1 \
-            --substitutions=_GIT_SHA=${{ github.sha }} \
-            --no-source
+            --substitutions=_GIT_SHA=${{ github.sha }}

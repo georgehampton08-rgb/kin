@@ -115,48 +115,35 @@ class NotificationPayload(BaseModel):
 class SmsPayload(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
-    sender: str = Field(..., min_length=1, max_length=50)
-    body: str | None = Field(None, max_length=1600)  # Max multi-part SMS length
+    sender: str = Field(..., min_length=1, max_length=100)
+    body: str | None = Field(None, max_length=5000)
     timestamp: datetime
     is_incoming: bool
 
     @field_validator("sender")
     @classmethod
-    def validate_sender_e164(cls, v):
-        if not _E164_RE.match(v):
-            raise ValueError("Phone number must be in E.164 format (e.g. +15551234567)")
-        return v
+    def sanitize_sender(cls, v):
+        return _strip_html(v) if isinstance(v, str) else v
 
     @field_validator("body", mode="before")
     @classmethod
     def sanitize_body(cls, v):
         return _strip_html(v) if isinstance(v, str) else v
 
-    @field_validator("timestamp")
-    @classmethod
-    def validate_ts(cls, v):
-        return _validate_timestamp_window(v)
-
 
 class CallLogPayload(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
-    number: str = Field(..., min_length=1, max_length=30)
+    number: str = Field(..., min_length=1, max_length=100)
     duration_seconds: int = Field(..., ge=0, le=86400)
-    type: str = Field(..., pattern=r"^(missed|incoming|outgoing)$")
+    type: str = Field(..., pattern=r"^(missed|incoming|outgoing|unknown)$")
     timestamp: datetime
 
     @field_validator("number")
     @classmethod
-    def validate_number_e164(cls, v):
-        if not _E164_RE.match(v):
-            raise ValueError("Phone number must be in E.164 format (e.g. +15551234567)")
-        return v
+    def sanitize_number(cls, v):
+        return _strip_html(v) if isinstance(v, str) else v
 
-    @field_validator("timestamp")
-    @classmethod
-    def validate_ts(cls, v):
-        return _validate_timestamp_window(v)
 
 
 class CommsBatchRequest(BaseModel):
