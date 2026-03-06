@@ -6,6 +6,7 @@ POST /auth/refresh      — Rotate refresh token
 POST /auth/register     — Register a new parent user (creates family automatically)
 POST /auth/login        — Login and get tokens
 POST /auth/create-pairing-token — Parent generates a pairing token for QR code
+POST /auth/ws-token     — Exchange session JWT for short-lived WebSocket token
 """
 import os
 import secrets
@@ -16,14 +17,17 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, status, Depends, Request
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from slowapi.util import get_remote_address
 
-from app.core.rate_limiter import limiter
+from app.core.rate_limiter import (
+    limiter, check_ip_lockout, record_auth_failure, clear_auth_failures,
+)
 
 from app.db.session import AsyncSessionLocal
 from app.core.auth import (
     create_access_token,
     create_refresh_token,
+    create_ws_token,
     decode_token,
     hash_password,
     verify_password,
@@ -99,6 +103,8 @@ class PairDeviceResponse(BaseModel):
 @limiter.limit("10/minute")
 async def register(request: Request, req: RegisterRequest):
     """Register a new parent user. Automatically creates a family."""
+    check_ip_lockout(request)
+
     async with AsyncSessionLocal() as session:
         # Check if email already exists
         existing = await session.execute(
@@ -151,6 +157,7 @@ async def register(request: Request, req: RegisterRequest):
         session.add(rt)
         await session.commit()
 
+    clear_auth_failures(get_remote_address(request))
     return TokenResponse(access_token=access_token, refresh_token=refresh_tok)
 
 
@@ -160,6 +167,8 @@ async def register(request: Request, req: RegisterRequest):
 @limiter.limit("10/minute")
 async def login(request: Request, req: LoginRequest):
     """Login with email + password."""
+    check_ip_lockout(request)
+
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             select(User).where(User.email == req.email)
@@ -167,6 +176,7 @@ async def login(request: Request, req: LoginRequest):
         user = result.scalar_one_or_none()
 
         if not user or not verify_password(req.password, user.hashed_password):
+            record_auth_failure(get_remote_address(request))
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password",
@@ -201,6 +211,7 @@ async def login(request: Request, req: LoginRequest):
         session.add(rt)
         await session.commit()
 
+    clear_auth_failures(get_remote_address(request))
     return TokenResponse(access_token=access_token, refresh_token=refresh_tok)
 
 
@@ -244,30 +255,22 @@ async def pair_device(request: Request, req: PairDeviceRequest):
     """
     Accept a one-time pairing token (from QR code), validate it,
     create the device record, and return a device-scoped JWT.
+    Returns 400 for invalid/used/expired tokens — never reveals whether the token existed.
     """
+    check_ip_lockout(request)
+
     async with AsyncSessionLocal() as session:
-        # Look up the pairing token
         result = await session.execute(
             select(PairingToken).where(PairingToken.token == req.pairing_token)
         )
         pt = result.scalar_one_or_none()
 
-        if not pt:
+        # Return same error for not found, used, or expired — don't leak token existence
+        if not pt or pt.used_at is not None or pt.expires_at < datetime.now(timezone.utc):
+            record_auth_failure(get_remote_address(request))
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid pairing token",
-            )
-
-        if pt.used_at is not None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Pairing token already consumed",
-            )
-
-        if pt.expires_at < datetime.now(timezone.utc):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Pairing token has expired",
+                detail="Invalid or expired pairing token",
             )
 
         # Check if device_identifier is already paired
@@ -353,12 +356,30 @@ async def pair_device(request: Request, req: PairDeviceRequest):
             "topic_lwt": f"kin/telemetry/{device.device_identifier}/status",
         }
 
+    clear_auth_failures(get_remote_address(request))
     return PairDeviceResponse(
         access_token=access_token,
         refresh_token=refresh_tok,
         device_id=str(device.id),
         mqtt_config=mqtt_config,
     )
+
+
+# ── WebSocket Token ──────────────────────────────────────────
+
+@router.post("/ws-token")
+async def get_ws_token(user: dict = Depends(get_current_user)):
+    """
+    Exchange a valid session JWT for a short-lived WebSocket-only token.
+    The WS token has a 1-hour TTL and scope='websocket'.
+    This mitigates the risk of long-lived tokens in URL query parameters.
+    """
+    ws_token = create_ws_token(
+        user_id=user["sub"],
+        family_id=user["family_id"],
+        role=user["role"],
+    )
+    return {"ws_token": ws_token, "expires_in_seconds": 3600}
 
 
 # ── Refresh Token ────────────────────────────────────────────

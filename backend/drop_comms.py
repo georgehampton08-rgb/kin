@@ -4,7 +4,7 @@ import sys
 
 async def run():
     try:
-        conn = await asyncpg.connect('postgresql://postgres:postgres@localhost:15432/kin')
+        conn = await asyncpg.connect('postgresql://postgres:kinpass@localhost:15432/kin')
         await conn.execute("DROP TABLE IF EXISTS call_logs CASCADE;")
         await conn.execute("DROP TABLE IF EXISTS sms_messages CASCADE;")
         await conn.execute("DROP TABLE IF EXISTS notifications CASCADE;")

@@ -17,27 +17,40 @@ from passlib.context import CryptContext
 logger = logging.getLogger(__name__)
 
 # ── Configuration ────────────────────────────────────────────
-# In production, these MUST be set via environment variables (from GCP Secret Manager).
-# The dev-only defaults are only for local development — they log a warning on startup.
+# Secrets are loaded by secrets_loader.load_secrets() at startup.
+# For module-level access (e.g. by tests that import directly),
+# we fall back to env vars with strict production checks.
 _ENV = os.getenv("ENVIRONMENT", "development")
 
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
-if not JWT_SECRET_KEY:
-    if _ENV == "production":
-        raise RuntimeError("JWT_SECRET_KEY must be set in production")
-    JWT_SECRET_KEY = "DEV_ONLY_CHANGE_ME_IN_PRODUCTION_256bit_key_abc123"
-    logger.warning("Using development-only JWT_SECRET_KEY — DO NOT use in production")
 
+def _get_secret(name: str, dev_default: str) -> str:
+    """Get secret from secrets_loader cache, env var, or dev default."""
+    # Try secrets_loader first (populated at startup)
+    try:
+        from app.core.secrets_loader import get_secret
+        return get_secret(name)
+    except (RuntimeError, ImportError):
+        pass
+    # Fall back to env var
+    value = os.getenv(name, "")
+    if value:
+        return value
+    # Production must never use defaults
+    if _ENV == "production":
+        raise RuntimeError(f"{name} must be set in production")
+    logger.warning(f"Using development-only {name} — DO NOT use in production")
+    return dev_default
+
+
+# These are resolved lazily on first use via properties, but for backward
+# compatibility we also set module-level values that get updated at startup.
+JWT_SECRET_KEY = _get_secret("JWT_SECRET_KEY", "DEV_ONLY_CHANGE_ME_IN_PRODUCTION_256bit_key_abc123")
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 REFRESH_TOKEN_EXPIRE_DAYS = 7
+WS_TOKEN_EXPIRE_MINUTES = 60  # Short-lived token for WebSocket connections
 
-PGCRYPTO_KEY = os.getenv("PGCRYPTO_KEY", "")
-if not PGCRYPTO_KEY:
-    if _ENV == "production":
-        raise RuntimeError("PGCRYPTO_KEY must be set in production")
-    PGCRYPTO_KEY = "DEV_ONLY_PGCRYPTO_SYMMETRIC_KEY"
-    logger.warning("Using development-only PGCRYPTO_KEY — DO NOT use in production")
+PGCRYPTO_KEY = _get_secret("PGCRYPTO_KEY", "DEV_ONLY_PGCRYPTO_SYMMETRIC_KEY")
 
 # ── Password hashing ────────────────────────────────────────
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -46,6 +59,13 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # Set by middleware, read by the DB session pool's checkout event
 current_family_id: ContextVar[Optional[str]] = ContextVar("current_family_id", default=None)
 current_user_id: ContextVar[Optional[str]] = ContextVar("current_user_id", default=None)
+
+
+def reload_secrets():
+    """Called at startup after secrets_loader.load_secrets() to refresh module-level values."""
+    global JWT_SECRET_KEY, PGCRYPTO_KEY
+    JWT_SECRET_KEY = _get_secret("JWT_SECRET_KEY", "DEV_ONLY_CHANGE_ME_IN_PRODUCTION_256bit_key_abc123")
+    PGCRYPTO_KEY = _get_secret("PGCRYPTO_KEY", "DEV_ONLY_PGCRYPTO_SYMMETRIC_KEY")
 
 
 def hash_password(password: str) -> str:
@@ -77,6 +97,26 @@ def create_access_token(
     }
     if device_id:
         payload["device_id"] = device_id
+    return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+
+def create_ws_token(
+    user_id: str,
+    family_id: str,
+    role: str,
+) -> str:
+    """Create a short-lived WebSocket-only token (1 hour max)."""
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": user_id,
+        "family_id": family_id,
+        "role": role,
+        "scope": "websocket",
+        "type": "ws",
+        "iat": now,
+        "exp": now + timedelta(minutes=WS_TOKEN_EXPIRE_MINUTES),
+        "jti": str(uuid.uuid4()),
+    }
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 

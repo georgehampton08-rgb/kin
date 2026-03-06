@@ -32,7 +32,13 @@ mqtt_listener = MQTTListener()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
+    # Startup — load secrets first, before anything else
+    from app.core.secrets_loader import load_secrets
+    from app.core.auth import reload_secrets
+    load_secrets()
+    reload_secrets()
+    logger.info("Application secrets loaded successfully")
+
     mqtt_listener.start()
     set_mqtt_listener(mqtt_listener)
     start_scheduler()

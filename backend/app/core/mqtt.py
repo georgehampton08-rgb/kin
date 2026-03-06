@@ -15,7 +15,15 @@ from sqlalchemy import func, select
 
 logger = logging.getLogger(__name__)
 
-MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
+_ENV = os.getenv("ENVIRONMENT", "development")
+
+MQTT_BROKER = os.getenv("MQTT_BROKER", "")
+if not MQTT_BROKER:
+    if _ENV == "production":
+        raise RuntimeError("MQTT_BROKER must be set in production")
+    MQTT_BROKER = "localhost"
+    logger.warning("MQTT_BROKER not set — defaulting to localhost (dev only)")
+
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", "")
 MQTT_TOPIC = "kin/telemetry/+"

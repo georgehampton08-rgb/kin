@@ -33,19 +33,66 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     return 'unknown_device';
   }
 
+  /// Validate QR payload fields before storing any values.
+  /// Returns null if valid, or an error message string if invalid.
+  String? _validateQrPayload(String? apiUrl, dynamic mqttPort) {
+    if (apiUrl == null || apiUrl.isEmpty) {
+      return 'Missing API URL';
+    }
+
+    final uri = Uri.tryParse(apiUrl);
+    if (uri == null) {
+      return 'Invalid API URL format';
+    }
+
+    // In release builds, enforce HTTPS and reject IP hostnames
+    const isRelease = bool.fromEnvironment('dart.vm.product');
+    if (isRelease) {
+      if (uri.scheme != 'https') {
+        return 'API URL must use HTTPS in production';
+      }
+      // Reject IP addresses as hostnames (prevents phishing to local servers)
+      final host = uri.host;
+      if (RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$').hasMatch(host)) {
+        return 'API URL must use a domain name, not an IP address';
+      }
+    } else {
+      if (uri.scheme != 'https' && uri.scheme != 'http') {
+        return 'API URL must use HTTP or HTTPS';
+      }
+    }
+
+    // Validate MQTT port range
+    if (mqttPort != null) {
+      final port = (mqttPort is int) ? mqttPort : int.tryParse(mqttPort.toString());
+      if (port == null || port < 1 || port > 65535) {
+        return 'MQTT port must be between 1 and 65535';
+      }
+    }
+
+    return null; // Valid
+  }
+
   Future<void> _processQRCode(String rawValue) async {
     if (_isProcessing) return;
     setState(() => _isProcessing = true);
 
     try {
       final data = jsonDecode(rawValue);
-      final apiUrl = data['api_url'];
-      final pairingToken = data['pairing_token'];
+      final apiUrl = data['api_url'] as String?;
+      final pairingToken = data['pairing_token'] as String?;
       final mqttHost = data['mqtt_host'];
       final mqttPort = data['mqtt_port'];
 
       if (apiUrl == null || pairingToken == null) {
         throw Exception("Invalid QR code format.");
+      }
+
+      // Validate QR payload before using any values
+      final validationError = _validateQrPayload(apiUrl, mqttPort);
+      if (validationError != null) {
+        debugPrint('QR validation failed: $validationError — raw: $rawValue');
+        throw Exception('Invalid configuration code');
       }
 
       final hardwareId = await _getDeviceIdentifier();

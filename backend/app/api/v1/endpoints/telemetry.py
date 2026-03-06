@@ -16,6 +16,7 @@ For each point:
 """
 import gzip
 import json
+import re
 import logging
 from datetime import datetime, timezone, timedelta
 
@@ -34,6 +35,19 @@ logger = logging.getLogger(__name__)
 LOW_BATTERY_THRESHOLD = 20.0
 
 router = APIRouter()
+
+# E.164 phone number format
+_E164_RE = re.compile(r"^\+[1-9]\d{1,14}$")
+
+def _strip_html(value: str) -> str:
+    """Remove HTML/script tags from string fields to prevent stored XSS."""
+    if not value:
+        return value
+    # Remove script tags and their contents
+    value = re.sub(r"<script[^>]*>.*?</script>", "", value, flags=re.DOTALL | re.IGNORECASE)
+    # Remove remaining HTML tags
+    value = re.sub(r"<[^>]+>", "", value)
+    return value.strip()
 
 
 MAX_BATCH_SIZE = 100
@@ -87,6 +101,11 @@ class NotificationPayload(BaseModel):
     text: str | None = Field(None, max_length=2000)
     timestamp: datetime
 
+    @field_validator("title", "text", mode="before")
+    @classmethod
+    def sanitize_text(cls, v):
+        return _strip_html(v) if isinstance(v, str) else v
+
     @field_validator("timestamp")
     @classmethod
     def validate_ts(cls, v):
@@ -97,9 +116,21 @@ class SmsPayload(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     sender: str = Field(..., min_length=1, max_length=50)
-    body: str | None = Field(None, max_length=2000)
+    body: str | None = Field(None, max_length=1600)  # Max multi-part SMS length
     timestamp: datetime
     is_incoming: bool
+
+    @field_validator("sender")
+    @classmethod
+    def validate_sender_e164(cls, v):
+        if not _E164_RE.match(v):
+            raise ValueError("Phone number must be in E.164 format (e.g. +15551234567)")
+        return v
+
+    @field_validator("body", mode="before")
+    @classmethod
+    def sanitize_body(cls, v):
+        return _strip_html(v) if isinstance(v, str) else v
 
     @field_validator("timestamp")
     @classmethod
@@ -114,6 +145,13 @@ class CallLogPayload(BaseModel):
     duration_seconds: int = Field(..., ge=0, le=86400)
     type: str = Field(..., pattern=r"^(missed|incoming|outgoing)$")
     timestamp: datetime
+
+    @field_validator("number")
+    @classmethod
+    def validate_number_e164(cls, v):
+        if not _E164_RE.match(v):
+            raise ValueError("Phone number must be in E.164 format (e.g. +15551234567)")
+        return v
 
     @field_validator("timestamp")
     @classmethod
