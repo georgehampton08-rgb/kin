@@ -244,44 +244,13 @@ export default function App() {
                 <div className="device-selector">
                     <button className="add-device-btn" title="Add New Device" onClick={() => setIsAddCardOpen(true)}>+</button>
                     <label>Target ID:</label>
-                    <input id="device-id-input" value={deviceId} onChange={e => setDeviceId(e.target.value)} placeholder="Enter ID" />
+                    <input id="device-id-input" className="device-search-input" value={deviceId} onChange={e => setDeviceId(e.target.value)} placeholder="Enter ID" />
                     <button className="mode-btn settings-btn" title="Global Settings" onClick={() => setIsSettingsOpen(true)}>☰</button>
                 </div>
             </header>
 
             {/* ── Map Area ───────────────────────────────────────────────── */}
             <main className="map-view">
-
-                {/* History Sidebar */}
-                <aside className={`history-sidebar ${sidebarOpen ? 'open' : ''}`}>
-                    <div className="sidebar-header">
-                        <h2>📍 Trip Log</h2>
-                        <button className="sidebar-close" onClick={() => setSidebarOpen(false)}>✕</button>
-                    </div>
-                    <div className="sidebar-content">
-                        {loading && <p className="no-data-msg">Loading…</p>}
-                        {error && <p className="no-data-msg" style={{ color: '#ff5555' }}>Error: {error}</p>}
-                        {!loading && !error && features.length === 0 && (
-                            <p className="no-data-msg">No trips recorded for this date.</p>
-                        )}
-                        {features.map((f, i) => (
-                            <div
-                                key={f.properties.id}
-                                className={`trip-card ${activeTripIdx === i ? 'active' : ''}`}
-                                onClick={() => jumpToTrip(i)}
-                            >
-                                <div className="trip-card-time">
-                                    {fmtDateTime(f.properties.trip_start)} → {fmtDateTime(f.properties.trip_end)}
-                                </div>
-                                <div className="trip-card-meta">
-                                    {f.properties.raw_point_count} pts · {f.properties.provider} · conf {(f.properties.confidence * 100).toFixed(0)}%
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </aside>
-
-                {/* Map */}
                 <KinMap
                     targetLocation={mode === 'live' ? lastLocation : scrubPoint}
                     historyFeatures={mode === 'history' ? features : []}
@@ -291,86 +260,116 @@ export default function App() {
                     liveDevices={mode === 'live' ? deviceStates : {}}
                     activeDeviceId={deviceId}
                 />
+            </main>
 
-                {/* Comms Panel Overlay */}
-                {mode === 'comms' && (
-                    <div className="comms-overlay stagger-3">
-                        <CommsPanel
-                            deviceId={deviceId}
-                            knownDevices={knownDevices}
-                            onSelectDevice={id => setDeviceId(id)}
-                        />
-                    </div>
-                )}
-
-                {/* Device List Panel */}
-                <DeviceListPanel
-                    devices={knownDevices}
-                    activeDeviceId={deviceId}
-                    onSelectDevice={id => setDeviceId(id)}
-                    forceClose={sidebarOpen}
-                    onDeleteDevice={handleDeleteDevice}
-                    onRefresh={() => fetchDevices()}
-                />
-
-                {/* Global Settings Drawer */}
-                <SettingsDrawer
-                    isOpen={isSettingsOpen}
-                    onClose={() => setIsSettingsOpen(false)}
-                />
-
-                {/* Zone Legend */}
-                <div className="zone-legend">
-                    <div className="zone-legend-title">Zones</div>
-                    {Object.entries(ZONE_LABELS).map(([type, label]) => (
-                        <div key={type} className="legend-row">
-                            <div className="legend-dot" style={{ background: ZONE_COLORS[type] }} />
-                            {label}
+            {/* ── Overlays (Siblings to Map and Header) ── */}
+            {/* History Sidebar */}
+            <aside className={`history-sidebar ${sidebarOpen ? 'open' : ''}`}>
+                <div className="sidebar-header">
+                    <h2>📍 Trip Log</h2>
+                    <button className="sidebar-close" onClick={() => setSidebarOpen(false)}>✕</button>
+                </div>
+                <div className="sidebar-content">
+                    {loading && <p className="no-data-msg">Loading…</p>}
+                    {error && <p className="no-data-msg" style={{ color: '#ff5555' }}>Error: {error}</p>}
+                    {!loading && !error && features.length === 0 && (
+                        <p className="no-data-msg">No trips recorded for this date.</p>
+                    )}
+                    {features.map((f, i) => (
+                        <div
+                            key={f.properties.id}
+                            className={`trip-card ${activeTripIdx === i ? 'active' : ''}`}
+                            onClick={() => jumpToTrip(i)}
+                        >
+                            <div className="trip-card-time">
+                                {fmtDateTime(f.properties.trip_start)} → {fmtDateTime(f.properties.trip_end)}
+                            </div>
+                            <div className="trip-card-meta">
+                                {f.properties.raw_point_count} pts · {f.properties.provider} · conf {(f.properties.confidence * 100).toFixed(0)}%
+                            </div>
                         </div>
                     ))}
                 </div>
+            </aside>
 
-                {/* Live Telemetry HUD */}
-                {mode === 'live' && lastLocation && (
-                    <div className="telemetry-overlay stagger-2">
-                        <DeviceStatusPanel deviceStatus={deviceStatus} />
-                        <div className="telemetry-bar glass-panel">
-                            <div className="stat">
-                                <span className="label">SPD</span>
-                                <span className="value">{(lastLocation.speed * 2.23694).toFixed(1)} <small>mph</small></span>
-                            </div>
-                            <div className="stat">
-                                <span className="label">BAT</span>
-                                <span className="value">{lastLocation.battery || '--'}%</span>
-                            </div>
+            {/* Comms Panel Overlay */}
+            {mode === 'comms' && (
+                <div className="comms-overlay stagger-3">
+                    <CommsPanel
+                        deviceId={deviceId}
+                        knownDevices={knownDevices}
+                        onSelectDevice={id => setDeviceId(id)}
+                    />
+                </div>
+            )}
+
+            {/* Device List Panel */}
+            <DeviceListPanel
+                devices={knownDevices}
+                activeDeviceId={deviceId}
+                onSelectDevice={id => setDeviceId(id)}
+                forceClose={sidebarOpen}
+                onDeleteDevice={handleDeleteDevice}
+                onRefresh={() => fetchDevices()}
+            />
+
+            {/* Global Settings Drawer */}
+            <SettingsDrawer
+                isOpen={isSettingsOpen}
+                onClose={() => setIsSettingsOpen(false)}
+            />
+
+            {/* Zone Legend */}
+            <div className="zone-legend">
+                <div className="zone-legend-title">Zones</div>
+                {Object.entries(ZONE_LABELS).map(([type, label]) => (
+                    <div key={type} className="legend-row">
+                        <div className="legend-dot" style={{ background: ZONE_COLORS[type] }} />
+                        {label}
+                    </div>
+                ))}
+            </div>
+
+            {/* Live Telemetry HUD */}
+            {mode === 'live' && lastLocation && (
+                <div className="telemetry-overlay stagger-2">
+                    <DeviceStatusPanel deviceStatus={deviceStatus} />
+                    <div className="telemetry-bar glass-panel">
+                        <div className="stat">
+                            <span className="label">SPD</span>
+                            <span className="value">{(lastLocation.speed * 2.23694).toFixed(1)} <small>mph</small></span>
+                        </div>
+                        <div className="stat">
+                            <span className="label">BAT</span>
+                            <span className="value">{lastLocation.battery || '--'}%</span>
                         </div>
                     </div>
-                )}
+                </div>
+            )}
 
-                {/* History Scrubber — bottom bar */}
-                {mode === 'history' && !loading && coordinates.length > 0 && (
-                    <div className="history-panel glass-panel stagger-2">
-                        <div className="scrub-controls">
-                            <div className="scrub-meta">
-                                <div>
-                                    <div className="scrub-label">Current Time</div>
-                                    <div className="scrub-time">{fmtTime(scrubPoint?.timestamp)}</div>
-                                </div>
-                                <div className="scrub-label">{scrubIndex + 1} / {coordinates.length} pts</div>
+            {/* History Scrubber — bottom bar */}
+            {mode === 'history' && !loading && coordinates.length > 0 && (
+                <div className="history-panel glass-panel stagger-2">
+                    <div className="scrub-controls">
+                        <div className="scrub-meta">
+                            <div>
+                                <div className="scrub-label">Current Time</div>
+                                <div className="scrub-time">{fmtTime(scrubPoint?.timestamp)}</div>
                             </div>
-                            <input
-                                id="history-scrubber"
-                                type="range"
-                                className="scrub-slider"
-                                min={0}
-                                max={coordinates.length - 1}
-                                value={scrubIndex}
-                                onChange={e => setScrubIndex(Number(e.target.value))}
-                            />
+                            <div className="scrub-label">{scrubIndex + 1} / {coordinates.length} pts</div>
                         </div>
+                        <input
+                            id="history-scrubber"
+                            type="range"
+                            className="scrub-slider"
+                            min={0}
+                            max={coordinates.length - 1}
+                            value={scrubIndex}
+                            onChange={e => setScrubIndex(Number(e.target.value))}
+                        />
                     </div>
-                )}
-            </main>
+                </div>
+            )}
 
             {/* Toast styles injected inline */}
             <style>{`
@@ -392,17 +391,19 @@ export default function App() {
         .add-device-btn:hover { background: #00ccaa; }
         .device-selector { display: flex; align-items: center; }
       `}</style>
-            {isAddCardOpen && <AddDeviceModal onClose={() => setIsAddCardOpen(false)} />}
+    { isAddCardOpen && <AddDeviceModal onClose={() => setIsAddCardOpen(false)} /> }
 
-            {/* Background Device Trackers */}
-            {mode === 'live' && knownDevices.map(d => (
-                <DeviceTracker
-                    key={d.device_id}
-                    device={d}
-                    onUpdate={handleDeviceUpdate}
-                    onAlert={handleAlert}
-                />
-            ))}
-        </div>
+    {/* Background Device Trackers */ }
+    {
+        mode === 'live' && knownDevices.map(d => (
+            <DeviceTracker
+                key={d.device_id}
+                device={d}
+                onUpdate={handleDeviceUpdate}
+                onAlert={handleAlert}
+            />
+        ))
+    }
+        </div >
     );
 }

@@ -184,7 +184,8 @@ h6 {
 .device-selector {
   display: flex;
   align-items: center;
-  gap: var(--spacing-2);
+  gap: var(--spacing-3);
+  flex-wrap: nowrap;
 }
 
 .device-selector label {
@@ -192,6 +193,7 @@ h6 {
   color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 1px;
+  white-space: nowrap;
 }
 
 .device-search-input {
@@ -647,7 +649,7 @@ h6 {
   bottom: 0;
   background: rgba(10, 13, 20, 0.95);
   backdrop-filter: blur(8px);
-  z-index: 50;
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: center;
