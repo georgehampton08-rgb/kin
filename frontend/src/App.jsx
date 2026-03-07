@@ -263,12 +263,12 @@ export default function App() {
             {/* ── Map Area ───────────────────────────────────────────────── */}
             <main className="map-view">
                 <KinMap
-                    targetLocation={mode === 'live' ? lastLocation : scrubPoint}
+                    targetLocation={mode === 'live' || mode === 'comms' ? lastLocation : scrubPoint}
                     historyFeatures={mode === 'history' ? features : []}
                     isHistory={mode === 'history'}
                     zonePolygons={zonePolygons}
                     activeZoneIds={activeZoneIds}
-                    liveDevices={mode === 'live' ? deviceStates : {}}
+                    liveDevices={mode !== 'history' ? deviceStates : {}}
                     activeDeviceId={deviceId}
                 />
             </main>
