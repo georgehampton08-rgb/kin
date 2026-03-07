@@ -68,18 +68,39 @@ h6 {
   box-shadow: var(--shadow-md);
 }
 
+/* ── Floating Header — two-row, fixed height ── */
 .floating-header {
   position: absolute;
-  top: var(--spacing-4);
+  top: var(--spacing-3);
   left: var(--spacing-4);
   right: var(--spacing-4);
   z-index: 10;
   display: flex;
+  flex-direction: column;
+  /* explicit two rows — no flex-wrap */
+  gap: 0;
+  padding: 0;
+  /* remove old single-row padding — rows handle their own */
+}
+
+/* Row 1: branding | tabs | right-side control */
+.header-row-1 {
+  display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-3) var(--spacing-5);
-  gap: var(--spacing-4);
-  flex-wrap: wrap;
+  padding: var(--spacing-2) var(--spacing-4);
+  gap: var(--spacing-3);
+  min-height: 52px;
+}
+
+/* Row 2: device tools */
+.header-row-2 {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-2) var(--spacing-4);
+  gap: var(--spacing-3);
+  border-top: 1px solid var(--color-border-light);
+  min-height: 48px;
 }
 
 @media (max-width: 768px) {
@@ -87,11 +108,21 @@ h6 {
     top: var(--spacing-2);
     left: var(--spacing-2);
     right: var(--spacing-2);
+  }
+
+  .header-row-1 {
     padding: var(--spacing-2) var(--spacing-3);
+    min-height: 44px;
     gap: var(--spacing-2);
-    justify-content: center;
+  }
+
+  .header-row-2 {
+    padding: 6px var(--spacing-3);
+    min-height: 40px;
+    gap: var(--spacing-2);
   }
 }
+
 
 .hud-title {
   flex-shrink: 0;
@@ -429,14 +460,42 @@ h6 {
   background: rgba(255, 255, 255, 0.1);
 }
 
-/* ── Zone Legend ── */
+/* ── Zone Legend — only visible on live/history map views ── */
 .zone-legend {
   position: absolute;
   bottom: var(--spacing-4);
   right: 60px;
   z-index: 10;
   padding: var(--spacing-3) var(--spacing-4);
+  transition: opacity 0.2s, visibility 0.2s;
 }
+
+/* Hidden when a full-panel mode (comms, etc.) takes over */
+.zone-legend.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@media (max-width: 600px) {
+
+  /* On small screens legend crowds the map — collapse to icon only */
+  .zone-legend {
+    right: var(--spacing-2);
+    bottom: var(--spacing-8);
+    padding: var(--spacing-2);
+  }
+
+  .zone-legend-title {
+    display: none;
+  }
+
+  .legend-row {
+    gap: 4px;
+    font-size: 0.62rem;
+  }
+}
+
 
 .zone-legend-title {
   font-size: var(--text-size-xs);
@@ -461,10 +520,10 @@ h6 {
   border-radius: 50%;
 }
 
-/* History Sidebar (Repositioned to left edge floating over map) */
+/* History Sidebar (left edge floating over map) — offsets from header */
 .history-sidebar {
   position: absolute;
-  top: 90px;
+  top: calc(var(--header-h) + 8px);
   left: var(--spacing-4);
   bottom: var(--spacing-4);
   width: 320px;
@@ -478,6 +537,14 @@ h6 {
 .history-sidebar.open {
   transform: translateX(0);
 }
+
+@media (max-width: 768px) {
+  .history-sidebar {
+    top: calc(var(--header-h-mobile) + 8px);
+    width: calc(100vw - 32px);
+  }
+}
+
 
 .sidebar-header {
   padding: var(--spacing-4);
@@ -679,29 +746,42 @@ h6 {
   color: var(--color-signal-active);
 }
 
-/* ── Comms Panel & Others ── */
+/* ── Comms Panel — starts below header, not from top:0 ── */
 .comms-overlay {
   position: absolute;
-  top: 0;
+  top: var(--header-h);
+  /* clear the header completely */
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(10, 13, 20, 0.95);
+  background: rgba(10, 13, 20, 0.97);
   backdrop-filter: blur(8px);
-  z-index: 5;
+  z-index: 8;
+  /* above map (1), below header (10) */
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  /* panel pins to top of content area */
   justify-content: center;
-  padding: var(--spacing-5);
+  padding: var(--spacing-4) var(--spacing-5);
+  overflow-y: auto;
 }
 
 .comms-panel {
   width: 100%;
-  max-width: 800px;
-  height: 80vh;
+  max-width: 860px;
+  /* fills available height below header */
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
+
+@media (max-width: 768px) {
+  .comms-overlay {
+    top: var(--header-h-mobile);
+    padding: var(--spacing-3);
+  }
+}
+
 
 /* Make sure text input placeholder looks nice */
 ::placeholder {

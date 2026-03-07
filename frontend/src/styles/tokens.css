@@ -58,6 +58,11 @@
     --spacing-6: 32px;
     --spacing-8: 48px;
 
+    /* Layout — header height drives ALL overlay offsets */
+    --header-h: 108px;
+    /* two-row header: 52px top row + 48px bottom row + 8px gap */
+    --header-h-mobile: 88px;
+
     /* Radius */
     --radius-sm: 8px;
     --radius-md: 16px;

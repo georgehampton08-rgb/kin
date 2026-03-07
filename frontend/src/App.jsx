@@ -217,35 +217,43 @@ export default function App() {
             {/* Toast container */}
             <Toaster position="top-right" />
 
-            {/* ── Header ──────────────────────────────────────────────────── */}
+            {/* ── Header (two-row, fixed height) ──────────────────────── */}
             <header className="floating-header glass-panel stagger-1">
-                <div className="hud-title">
-                    <h1>Kin Dashboard</h1>
-                    <span className="subtitle">
-                        {mode === 'live' ? 'Real-Time Surveillance Link' : mode === 'history' ? 'History Playback' : 'Signals Intelligence'}
-                    </span>
-                </div>
-
-                <div className="mode-toggle">
-                    <button id="btn-live" className={`mode-btn ${mode === 'live' ? 'active' : ''}`} onClick={() => handleModeSwitch('live')}>Live</button>
-                    <button id="btn-history" className={`mode-btn ${mode === 'history' ? 'active' : ''}`} onClick={() => handleModeSwitch('history')}>History</button>
-                    <button id="btn-comms" className={`mode-btn ${mode === 'comms' ? 'active' : ''}`} onClick={() => handleModeSwitch('comms')}>Comms</button>
-                </div>
-
-                {mode === 'live' ? (
-                    <div className="status-indicator">
-                        <div className={`status-dot ${status}`}></div>
-                        <span className="status-text">{status.toUpperCase()}</span>
+                {/* Row 1: branding | nav tabs | right control */}
+                <div className="header-row-1">
+                    <div className="hud-title">
+                        <h1>Kin Dashboard</h1>
+                        <span className="subtitle">
+                            {mode === 'live' ? 'Real-Time Surveillance Link' : mode === 'history' ? 'History Playback' : 'Signals Intelligence'}
+                        </span>
                     </div>
-                ) : (
-                    <input id="history-date-picker" className="scrub-date-picker" type="date" value={historyDate} onChange={handleDateChange} />
-                )}
 
-                <div className="device-selector">
-                    <button className="add-device-btn" title="Add New Device" onClick={() => setIsAddCardOpen(true)}>+</button>
-                    <label>Target ID:</label>
-                    <input id="device-id-input" className="device-search-input" value={deviceId} onChange={e => setDeviceId(e.target.value)} placeholder="Enter ID" />
-                    <button className="mode-btn settings-btn" title="Global Settings" onClick={() => setIsSettingsOpen(true)}>☰</button>
+                    <div className="mode-toggle">
+                        <button id="btn-live" className={`mode-btn ${mode === 'live' ? 'active' : ''}`} onClick={() => handleModeSwitch('live')}>Live</button>
+                        <button id="btn-history" className={`mode-btn ${mode === 'history' ? 'active' : ''}`} onClick={() => handleModeSwitch('history')}>History</button>
+                        <button id="btn-comms" className={`mode-btn ${mode === 'comms' ? 'active' : ''}`} onClick={() => handleModeSwitch('comms')}>Comms</button>
+                    </div>
+
+                    {mode === 'live' ? (
+                        <div className="status-indicator">
+                            <div className={`status-dot ${status}`}></div>
+                            <span className="status-text">{status.toUpperCase()}</span>
+                        </div>
+                    ) : mode === 'history' ? (
+                        <input id="history-date-picker" className="scrub-date-picker" type="date" value={historyDate} onChange={handleDateChange} />
+                    ) : (
+                        <div style={{ width: 140 }} />
+                    )}
+                </div>
+
+                {/* Row 2: device tools */}
+                <div className="header-row-2">
+                    <div className="device-selector">
+                        <button className="add-device-btn" title="Add New Device" onClick={() => setIsAddCardOpen(true)}>+</button>
+                        <label>Target ID:</label>
+                        <input id="device-id-input" className="device-search-input" value={deviceId} onChange={e => setDeviceId(e.target.value)} placeholder="Enter ID" />
+                        <button className="mode-btn settings-btn" title="Global Settings" onClick={() => setIsSettingsOpen(true)}>☰</button>
+                    </div>
                 </div>
             </header>
 
@@ -321,8 +329,8 @@ export default function App() {
                 onClose={() => setIsSettingsOpen(false)}
             />
 
-            {/* Zone Legend */}
-            <div className="zone-legend">
+            {/* Zone Legend — hidden in comms mode or on map-free views */}
+            <div className={`zone-legend glass-panel ${mode !== 'live' ? 'hidden' : ''}`}>
                 <div className="zone-legend-title">Zones</div>
                 {Object.entries(ZONE_LABELS).map(([type, label]) => (
                     <div key={type} className="legend-row">

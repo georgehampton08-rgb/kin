@@ -65,7 +65,7 @@ export default function DeviceListPanel({ devices = [], activeDeviceId, onSelect
             <style>{`
                 .device-list-panel {
                     position: absolute;
-                    top: 90px;
+                    top: calc(var(--header-h) + 8px);
                     right: var(--spacing-5);
                     z-index: 20;
                     min-width: 260px;
@@ -80,7 +80,7 @@ export default function DeviceListPanel({ devices = [], activeDeviceId, onSelect
                 }
                 @media (max-width: 768px) {
                     .device-list-panel {
-                        top: 90px;
+                        top: calc(var(--header-h-mobile) + 8px);
                         right: var(--spacing-3);
                         left: auto;
                         min-width: 200px;
