@@ -107,12 +107,15 @@ export default function App() {
     const handleDeviceUpdate = useCallback((id, loc, stat, devStat) => {
         setDeviceStates(prev => {
             const existing = prev[id] || {};
-            if (existing.lastLocation === loc && existing.status === stat && existing.deviceStatus === devStat) {
+            const nextLoc = loc || existing.lastLocation;
+            const nextDevStat = devStat || existing.deviceStatus;
+
+            if (existing.lastLocation === nextLoc && existing.status === stat && existing.deviceStatus === nextDevStat) {
                 return prev;
             }
             return {
                 ...prev,
-                [id]: { lastLocation: loc, status: stat, deviceStatus: devStat }
+                [id]: { lastLocation: nextLoc, status: stat, deviceStatus: nextDevStat }
             };
         });
 
@@ -133,8 +136,8 @@ export default function App() {
                 // Live telemetry data
                 tripStatus: devStat?.tripStatus ?? existing.tripStatus,
                 speed: loc?.speed ?? existing.speed,
-                last_lat: loc?.lat ?? existing.last_lat,
-                last_lon: loc?.lon ?? existing.last_lon,
+                last_lat: loc ? loc.lat : existing.last_lat,
+                last_lon: loc ? loc.lon : existing.last_lon,
             };
             return prev.map(d => d.device_id === id ? updated : d);
         });
