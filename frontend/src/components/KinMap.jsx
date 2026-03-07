@@ -74,7 +74,7 @@ export default function KinMap({
                     'fill-opacity': ZONE_OPACITY_INACTIVE,
                     'fill-outline-color': 'transparent'
                 }
-            }, 'watername_ocean'); // Add below labels ideally
+            }); // Let it sit at the top, since nolabels styles don't have watername_ocean
             // Zone border ring (dashed for calm containment)
             map.addLayer({
                 id: 'zones-border',
