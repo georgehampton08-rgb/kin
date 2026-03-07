@@ -3,7 +3,7 @@
 > **Status: COMPLETE** — All BLOCKED packages have been replaced. Zero commercial licenses remain in any active code path. Verified 2026-03-06.
 
 | Package Name | Current License | Commercial Use Restriction | Status / Proposed Replacement |
-|---|---|---|---|
+| :--- | :--- | :--- | :--- |
 | **Flutter (pubspec.yaml)** | | | |
 | `flutter` | BSD-3-Clause | NO | ✅ CLEAR |
 | `cupertino_icons` | MIT | NO | ✅ CLEAR |
@@ -63,7 +63,7 @@
 
 ## Appendix: Frontend License Summary (`npx license-checker --summary`)
 
-```
+```text
 ├─ MIT: 201
 ├─ ISC: 26
 ├─ BSD-3-Clause: 8

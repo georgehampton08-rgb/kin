@@ -120,15 +120,25 @@ class SmsPayload(BaseModel):
     timestamp: datetime
     is_incoming: bool
 
-    @field_validator("sender")
+    @field_validator("sender", mode="before")
     @classmethod
-    def sanitize_sender(cls, v):
-        return _strip_html(v) if isinstance(v, str) else v
+    def validate_sender(cls, v):
+        if isinstance(v, str):
+            stripped = _strip_html(v)
+            if not _E164_RE.match(stripped):
+                raise ValueError(f"sender must be a valid E.164 phone number (got: {stripped!r})")
+            return stripped
+        return v
 
     @field_validator("body", mode="before")
     @classmethod
     def sanitize_body(cls, v):
         return _strip_html(v) if isinstance(v, str) else v
+
+    @field_validator("timestamp")
+    @classmethod
+    def validate_ts(cls, v):
+        return _validate_timestamp_window(v)
 
 
 class CallLogPayload(BaseModel):
@@ -139,10 +149,20 @@ class CallLogPayload(BaseModel):
     type: str = Field(..., pattern=r"^(missed|incoming|outgoing|unknown)$")
     timestamp: datetime
 
-    @field_validator("number")
+    @field_validator("number", mode="before")
     @classmethod
-    def sanitize_number(cls, v):
-        return _strip_html(v) if isinstance(v, str) else v
+    def validate_number(cls, v):
+        if isinstance(v, str):
+            stripped = _strip_html(v)
+            if not _E164_RE.match(stripped):
+                raise ValueError(f"number must be a valid E.164 phone number (got: {stripped!r})")
+            return stripped
+        return v
+
+    @field_validator("timestamp")
+    @classmethod
+    def validate_ts(cls, v):
+        return _validate_timestamp_window(v)
 
 
 
