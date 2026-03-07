@@ -1,13 +1,19 @@
 """
 Map-Matching Service
 ====================
-Provider abstraction so switching OSRM → Google Roads is a one-line config change.
+Provider abstraction supporting:
+  - osrm   : Self-hosted OSRM (MIT licensed) — DEFAULT
+  - valhalla: Self-hosted Valhalla (MIT licensed) — OSM data (ODbL)
+
+Both are 100% open-source with zero commercial API key requirements.
+Google Roads has been removed; no proprietary map-matching APIs exist
+anywhere in this codebase.
 
 Active provider controlled by env var MAP_MATCHING_PROVIDER (default: "osrm").
-To switch to Google later:
-  1. Set MAP_MATCHING_PROVIDER=google
-  2. Set GOOGLE_ROADS_API_KEY=<your key>
-  3. No other code changes needed.
+To switch to Valhalla:
+  1. Set MAP_MATCHING_PROVIDER=valhalla
+  2. Set VALHALLA_BASE_URL=http://<your-valhalla-host>:8002
+  3. Run: docker run -dt -p 8002:8002 ghcr.io/gis-ops/docker-valhalla:latest
 """
 import os
 import logging
@@ -25,7 +31,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────────
 MAP_MATCHING_PROVIDER = os.getenv("MAP_MATCHING_PROVIDER", "osrm")
 OSRM_BASE_URL = os.getenv("OSRM_BASE_URL", "http://localhost:5000")
-GOOGLE_ROADS_API_KEY = os.getenv("GOOGLE_ROADS_API_KEY", "")
+VALHALLA_BASE_URL = os.getenv("VALHALLA_BASE_URL", "http://localhost:8002")
 
 
 # ──────────────────────────────────────────────────────────────
@@ -44,7 +50,7 @@ class MapMatchingProvider(ABC):
 
 
 # ──────────────────────────────────────────────────────────────
-# OSRM Provider (active)
+# OSRM Provider (default)
 # ──────────────────────────────────────────────────────────────
 class OsrmProvider(MapMatchingProvider):
     async def match(self, coords: list[tuple[float, float]]) -> dict:
@@ -77,53 +83,69 @@ class OsrmProvider(MapMatchingProvider):
 
 
 # ──────────────────────────────────────────────────────────────
-# Google Roads Provider (stub — ready to fill in)
+# Valhalla Provider (open-source alternative)
+# MIT licensed, self-hosted via ghcr.io/gis-ops/docker-valhalla
 # ──────────────────────────────────────────────────────────────
-class GoogleRoadsProvider(MapMatchingProvider):
+class ValhallaProvider(MapMatchingProvider):
     """
-    To activate:
-      MAP_MATCHING_PROVIDER=google
-      GOOGLE_ROADS_API_KEY=<key>
+    Valhalla /trace_route map-matching endpoint.
 
-    Google Roads Snap to Roads endpoint:
-      POST https://roads.googleapis.com/v1/snapToRoads
-      params: path=lat,lon|lat,lon&interpolate=true&key=...
+    Shape array format: [{"lon": x, "lat": y}, ...]
+    Costing: "auto" for driving, "pedestrian" for walking.
+    Costing is selected dynamically from the "costing" env var or defaults to "auto".
+
+    Docker quickstart:
+      docker run -dt -p 8002:8002 ghcr.io/gis-ops/docker-valhalla:latest
     """
+
     async def match(self, coords: list[tuple[float, float]]) -> dict:
-        if not GOOGLE_ROADS_API_KEY:
-            raise EnvironmentError("GOOGLE_ROADS_API_KEY is not set.")
-
-        path = "|".join(f"{lat},{lon}" for lon, lat in coords)
-        url = "https://roads.googleapis.com/v1/snapToRoads"
-        params = {
-            "path": path,
-            "interpolate": "true",
-            "key": GOOGLE_ROADS_API_KEY,
+        costing = os.getenv("VALHALLA_COSTING", "auto")
+        shape = [{"lon": lon, "lat": lat} for lon, lat in coords]
+        payload = {
+            "shape": shape,
+            "costing": costing,
+            "shape_match": "map_snap",
+            "filters": {
+                "attributes": ["edge.road_class", "edge.names"],
+                "action": "include",
+            },
         }
 
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+            async with session.post(
+                f"{VALHALLA_BASE_URL}/trace_route",
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=15),
+            ) as resp:
                 data = await resp.json()
 
-        snapped = data.get("snappedPoints", [])
-        if not snapped:
-            raise ValueError("Google Roads returned no snapped points.")
+        if "trip" not in data:
+            raise ValueError(f"Valhalla trace_route failed: {data}")
 
-        wkt_inner = ", ".join(
-            f"{p['location']['longitude']} {p['location']['latitude']}" for p in snapped
-        )
+        legs = data["trip"]["legs"]
+        all_coords: list[tuple[float, float]] = []
+        for leg in legs:
+            import polyline as pl  # python-polyline (MIT)
+            decoded = pl.decode(leg["shape"], 6)
+            all_coords.extend((lon, lat) for lat, lon in decoded)
+
+        wkt_inner = ", ".join(f"{lon} {lat}" for lon, lat in all_coords)
         wkt = f"LINESTRING({wkt_inner})"
 
-        return {"wkt": wkt, "confidence": None, "provider": "google",
-                "vertex_count": len(snapped)}
+        return {
+            "wkt": wkt,
+            "confidence": None,  # Valhalla does not expose a confidence score
+            "provider": f"valhalla:{costing}",
+            "vertex_count": len(all_coords),
+        }
 
 
 # ──────────────────────────────────────────────────────────────
 # Provider factory
 # ──────────────────────────────────────────────────────────────
 def get_provider() -> MapMatchingProvider:
-    if MAP_MATCHING_PROVIDER == "google":
-        return GoogleRoadsProvider()
+    if MAP_MATCHING_PROVIDER == "valhalla":
+        return ValhallaProvider()
     return OsrmProvider()
 
 

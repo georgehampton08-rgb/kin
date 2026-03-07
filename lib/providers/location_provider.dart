@@ -1,13 +1,33 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_background_geolocation/flutter_background_geolocation.dart' as bg;
+
+/// Lightweight position snapshot — no Transistorsoft types.
+class LocationPoint {
+  final double latitude;
+  final double longitude;
+  final double accuracy;
+  final double speed;
+  final double batteryLevel;
+  final DateTime timestamp;
+  final bool isMoving;
+
+  const LocationPoint({
+    required this.latitude,
+    required this.longitude,
+    required this.accuracy,
+    required this.speed,
+    required this.batteryLevel,
+    required this.timestamp,
+    this.isMoving = true,
+  });
+}
 
 class LocationProvider extends ChangeNotifier {
-  bg.Location? _currentLocation;
+  LocationPoint? _currentLocation;
 
-  bg.Location? get currentLocation => _currentLocation;
+  LocationPoint? get currentLocation => _currentLocation;
 
-  void updateLocation(bg.Location location) {
-    _currentLocation = location;
+  void updateLocation(LocationPoint point) {
+    _currentLocation = point;
     notifyListeners();
   }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_background_geolocation/flutter_background_geolocation.dart' as bg;
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'providers/location_provider.dart';
 import 'services/location_service.dart';
@@ -15,15 +15,17 @@ void main() {
   // Lock the app to portrait — child can't rotate out of the running state
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
-  // Register headless background task
-  bg.BackgroundGeolocation.registerHeadlessTask(locationHeadlessTask);
+  // flutter_foreground_task registers its own callback via startCallback()
+  // declared in location_service.dart — no explicit registration needed here.
 
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => LocationProvider()),
-      ],
-      child: const KinApp(),
+    WithForegroundTask(
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => LocationProvider()),
+        ],
+        child: const KinApp(),
+      ),
     ),
   );
 }

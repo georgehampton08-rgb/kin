@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:app_settings/app_settings.dart';
-import '../main.dart'; // To navigate to LocationScreen
 import 'qr_scanner_screen.dart';
 import 'package:notification_listener_service/notification_listener_service.dart';
 

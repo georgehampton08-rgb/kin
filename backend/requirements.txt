@@ -15,3 +15,4 @@ apscheduler==3.11.2
 slowapi==0.1.9
 limits
 google-cloud-secret-manager
+polyline==2.0.2
